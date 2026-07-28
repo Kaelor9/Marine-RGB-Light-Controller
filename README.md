@@ -1,57 +1,119 @@
-# Prism – én-klik installer
+<p align="center">
+  <img src="docs/images/Hero.PNG" width="100%">
+</p>
 
-Projektet bygger automatisk Arduino-sketch’en til:
+# Marine RGB Light Controller
 
-- ESP32-S3-WROOM-1-N8R8
-- 8 MB flash
-- 8 MB OPI PSRAM
-- USB CDC aktiveret
-- WS2811-data på GPIO4
-- Knap/input på GPIO38
+A professional ESP32-S3 based RGB lighting controller designed for marine environments.
 
-Efter bygningen publiceres en HTTPS-side med knappen **Installér Prism**.
+Built for reliability, expandability and seamless integration with FastLED, while providing isolated inputs, wireless connectivity and a robust 12–24V power architecture.
 
-## Opret installer-linket
+---
 
-1. Opret en gratis GitHub-konto, hvis du ikke allerede har en.
-2. Opret et nyt repository, eksempelvis `prism-installer`.
-3. Udpak ZIP-filen og upload **indholdet** til repositoryets `main`-branch.
-4. Åbn repositoryets **Settings → Pages**.
-5. Under **Build and deployment → Source** vælges **GitHub Actions**.
-6. Åbn fanen **Actions** og vent på, at workflowet
-   `Build and publish Prism installer` er gennemført.
-7. Det færdige link bliver normalt:
-   `https://DIT-BRUGERNAVN.github.io/prism-installer/`
+## Features
 
-## Brug installer-linket
+- ESP32-S3-WROOM-1
+- 12–24V DC input
+- Reverse polarity protection
+- 2× opto-isolated digital inputs
+- 2× 5V level-shifted FastLED data outputs
+- USB-C programming & power
+- Wi-Fi 2.4 GHz
+- Bluetooth LE
+- GPIO expansion
+- I²C expansion
+- Designed for marine environments
 
-1. Åbn linket i Chrome eller Edge på en computer.
-2. Tilslut ESP32’en med USB-datakabel.
-3. Tryk **Installér Prism**.
-4. Vælg ESP32’ens COM-port.
-5. Efter genstart opretter enheden Wi-Fi-netværket `Prism Setup`.
-6. Forbind telefonen til `Prism Setup`, og vælg dit normale Wi-Fi.
-7. Åbn `http://prism.local`.
+---
 
-## Ændring af appnavn
+# Hardware Overview
 
-I `Prism_RGB_Controller/Prism_RGB_Controller.ino` ændres:
+| Feature | Description |
+|----------|-------------|
+| MCU | ESP32-S3-WROOM-1 |
+| Supply Voltage | 12–24V DC |
+| LED Outputs | 2 × 5V Level Shifted FastLED Outputs |
+| Digital Inputs | 2 × Opto-Isolated Inputs |
+| Wireless | Wi-Fi 2.4GHz + Bluetooth LE |
+| Expansion | GPIO + I²C |
+| USB | USB-C |
+| Protection | Reverse polarity protection |
 
-```cpp
-const char* APP_NAME  = "Prism";
-const char* MDNS_NAME = "prism";
+---
+
+# Gallery
+
+<p align="center">
+
+<img src="docs/images/board-perspective.png" width="90%">
+
+<br><br>
+
+<img src="docs/images/board-top.png" width="90%">
+
+<br><br>
+
+<img src="docs/images/board-bottom.png" width="90%">
+
+<br><br>
+
+<img src="docs/images/board-side-usb.png" width="90%">
+
+<br><br>
+
+<img src="docs/images/board-side-connectors.png" width="90%">
+
+</p>
+
+---
+
+# Technical Specifications
+
+| Parameter | Value |
+|-----------|-------|
+| MCU | ESP32-S3-WROOM-1 |
+| Flash | 8 MB |
+| PSRAM | 8 MB |
+| Input Voltage | 12–24V DC |
+| USB | USB-C |
+| Wi-Fi | 2.4 GHz |
+| Bluetooth | BLE |
+| Isolated Inputs | 2 |
+| FastLED Outputs | 2 |
+| GPIO Expansion | Yes |
+| I²C Expansion | Yes |
+
+---
+
+# Repository Structure
+
+```
+Marine-RGB-Light-Controller
+│
+├── docs
+│   └── images
+│
+├── firmware
+│
+├── hardware
+│
+├── LICENSE
+│
+└── README.md
 ```
 
-Push ændringen til GitHub. Workflowet bygger og publicerer automatisk
-en ny firmwarefil.
+---
 
-## Sikkerhed
+# Future Improvements
 
-Wi-Fi-adgangskoden er ikke gemt i GitHub eller den offentlige firmwarefil.
-Den indtastes lokalt gennem `Prism Setup` og gemmes direkte i ESP32’ens NVS.
+- OTA firmware updates
+- Web configuration interface
+- Home Assistant integration
+- Additional FastLED effects
+- CAN bus support
 
-## Browserkrav
+---
 
-USB-installationen bruger Web Serial. Brug Chrome eller Edge på en computer.
-Safari og iPhone kan ikke udføre selve USB-flashningen.
+# License
 
+Released under the MIT License.
