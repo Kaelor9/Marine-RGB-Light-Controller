@@ -55,5 +55,3 @@ Den indtastes lokalt gennem `Prism Setup` og gemmes direkte i ESP32’ens NVS.
 USB-installationen bruger Web Serial. Brug Chrome eller Edge på en computer.
 Safari og iPhone kan ikke udføre selve USB-flashningen.
 
-<img width="2048" height="1074" alt="image" src="https://github.com/user-attachments/assets/11680552-1ca2-4747-9bd1-4a0c76ce6fac" />
-
