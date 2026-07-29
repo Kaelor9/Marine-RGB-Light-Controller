@@ -43,7 +43,9 @@ Built for reliability, expandability and seamless integration with FastLED, whil
 
 <p align="center">
 
-<img src="docs/images/pinout 2.png" width="90%">
+<img src="docs/images/PINOUT 2.png" width="90%">
+
+<br><br>
 
 # Gallery
 
