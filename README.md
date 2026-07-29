@@ -7,17 +7,14 @@ Marine RGB Light Controller
 </h1>
 
 <p align="center">
-ESP32-S3 based RGB LED controller for marine and automotive installations.
+ESP32-S3 based RGB LED controller for marine, automotive and industrial lighting applications.
 </p>
 
 <p align="center">
 
 ![ESP32-S3](https://img.shields.io/badge/ESP32-S3-blue)
-
 ![Input](https://img.shields.io/badge/Input-12--24V-success)
-
 ![USB-C](https://img.shields.io/badge/USB-USB--C-informational)
-
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 </p>
@@ -26,25 +23,26 @@ ESP32-S3 based RGB LED controller for marine and automotive installations.
 
 # Overview
 
-The Marine RGB Light Controller is a custom ESP32-S3 development board designed for driving addressable RGB LED strips in demanding environments.
+The Marine RGB Light Controller is a custom ESP32-S3 development board designed for controlling addressable LED installations in demanding environments.
 
-Unlike a standard ESP32 board, it integrates a complete protected power supply, optically isolated digital inputs, 5V level shifted LED outputs and expansion interfaces on a single compact PCB.
+Unlike a standard ESP32 development board, it integrates a protected controller power supply, dual 5V logic LED data outputs, high-speed optically isolated digital inputs and multiple expansion interfaces on a single compact PCB.
 
-Designed primarily for marine installations, the controller is equally suited for automotive, off-road and industrial lighting applications.
+Originally developed for marine lighting systems, the controller is equally suitable for automotive, off-road and industrial applications.
 
 ---
 
 # Highlights
 
-- ⚡ 12–24V DC input
-- 🛡 Reverse polarity & surge protection
+- ⚡ Protected 12–24V DC controller power input
+- 🔋 Direct VIN pass-through LED power output (12–24V)
+- 🌈 Two independent 5V level-shifted LED data outputs
+- 🔀 Compatible with a wide range of digital LED chipsets
+- 🛡 Reverse polarity and surge protection for controller electronics
 - 🔌 USB-C programming
-- 💡 Two independent WS281x/FastLED outputs
-- 🔀 5V logic level shifting
-- 🔒 Two optically isolated digital inputs
+- 🔒 Two high-speed optically isolated digital inputs
 - 📡 Wi-Fi & Bluetooth
 - 🔧 GPIO & I²C expansion
-- ⚓ Designed for marine environments
+- ⚓ Designed for harsh electrical environments
 
 ---
 
@@ -54,16 +52,25 @@ Designed primarily for marine installations, the controller is equally suited fo
 <img src="docs/images/board-top.png" width="900">
 </p>
 
-The controller integrates all major circuitry required for reliable LED control:
+The controller integrates everything required for reliable LED control on a single PCB:
 
-- Protected power input
-- High efficiency buck converter
-- Dedicated 3.3V regulator
-- ESP32-S3-WROOM-1
+- Protected controller power input
+- High-efficiency buck converter
+- Dedicated 3.3V LDO regulator
+- ESP32-S3-WROOM-1-N8R8
 - USB-C programming interface
-- 5V level shifter
+- Dual 5V logic level shifters
 - High-speed optocouplers
-- Expansion header
+- GPIO & I²C expansion header
+
+> [!IMPORTANT]
+> **LED VOUT is a direct pass-through of the input supply.**
+>
+> - LED VOUT voltage is always equal to VIN.
+> - The LED supply path is **not reverse polarity protected**.
+> - The LED supply path is **not separately fused**.
+> - Only the controller electronics are protected by the onboard fuse and reverse polarity protection.
+> - External protection should be added where required by the application.
 
 ---
 
@@ -76,14 +83,14 @@ The controller integrates all major circuitry required for reliable LED control:
 | Interface | Description |
 |------------|-------------|
 | VIN | 12–24V DC Input |
-| AUX Power | LED Supply |
-| DATA 1 | WS281x Output |
-| DATA 2 | WS281x Output |
+| AUX Power | Direct VIN pass-through |
+| DATA 1 | 5V Logic LED Data Output |
+| DATA 2 | 5V Logic LED Data Output |
 | ISO Input 1 | Optically Isolated Input |
 | ISO Input 2 | Optically Isolated Input |
 | SDA / SCL | I²C Expansion |
 | IO10 / IO11 | GPIO Expansion |
-| 3V3 / 5V | Auxiliary Power |
+| 3V3 / 5V | Auxiliary Power Outputs |
 
 ---
 
@@ -105,9 +112,10 @@ The controller integrates all major circuitry required for reliable LED control:
 |---------|---------------|
 | MCU | ESP32-S3-WROOM-1-N8R8 |
 | Input Voltage | 12–24V DC |
-| LED Outputs | 2 × WS281x |
-| Logic Level | 5V |
-| Optocoupled Inputs | 2 |
+| Controller Supply | Protected (Fuse + Reverse Polarity + TVS) |
+| LED Supply Output | Direct VIN Pass-through |
+| LED Data Outputs | 2 × 5V Logic (Level Shifted) |
+| Optically Isolated Inputs | 2 |
 | USB | USB-C |
 | Wireless | Wi-Fi + Bluetooth |
 | Expansion | GPIO + I²C |
@@ -116,11 +124,11 @@ The controller integrates all major circuitry required for reliable LED control:
 
 # Repository Structure
 
-```
+```text
 docs/
-    images/
-    hardware.md
-    software.md
+├── images/
+├── hardware.md
+├── software.md
 
 firmware/
 
@@ -133,7 +141,7 @@ README.md
 
 # Documentation
 
-Additional documentation can be found in the **docs** directory.
+Additional documentation is available in the **docs** directory.
 
 - Hardware Design
 - Power Supply
@@ -154,11 +162,12 @@ Additional documentation can be found in the **docs** directory.
 
 # Future Development
 
-- Web interface
+- Modern web interface
 - OTA firmware updates
 - MQTT support
 - Home Assistant integration
 - Additional LED effects
+- Configuration backup & restore
 
 ---
 
@@ -170,6 +179,6 @@ Released under the MIT License.
 
 <p align="center">
 
-Designed and developed by **Watcher-33**
+Designed and developed by <strong>Watcher-33</strong>
 
 </p>
