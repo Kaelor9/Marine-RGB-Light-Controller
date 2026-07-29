@@ -70,7 +70,7 @@ The controller integrates all major circuitry required for reliable LED control:
 # Pinout
 
 <p align="center">
-<img src="docs/images/pinout.png" width="900">
+<img src="docs/images/PINOUT 2.png" width="900">
 </p>
 
 | Interface | Description |
