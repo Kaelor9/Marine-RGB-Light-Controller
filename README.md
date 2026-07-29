@@ -1,21 +1,43 @@
 <p align="center">
-    <img src="docs/images/Hero.png" width="100%">
+  <img src="docs/images/Hero.png" width="100%" alt="Marine RGB Light Controller">
 </p>
 
 <h1 align="center">Marine RGB Light Controller</h1>
 
 <p align="center">
-Professional ESP32-S3 controller for addressable RGB LED installations in marine, automotive and industrial environments.
+  Professional ESP32-S3 controller for addressable RGB LED installations in marine, automotive and industrial environments.
 </p>
 
 <p align="center">
+  <img
+    src="https://img.shields.io/badge/MCU-ESP32--S3-blue"
+    alt="ESP32-S3"
+  >
+  <img
+    src="https://img.shields.io/badge/Input-12--24V-success"
+    alt="12–24V input"
+  >
+  <img
+    src="https://img.shields.io/badge/USB-USB--C-informational"
+    alt="USB-C"
+  >
+  <img
+    src="https://img.shields.io/badge/Protection-Automotive%20Grade-orange"
+    alt="Automotive-grade protection"
+  >
+  <img
+    src="https://img.shields.io/badge/License-Proprietary-red"
+    alt="Proprietary license"
+  >
+</p>
 
-![ESP32-S3](https://img.shields.io/badge/MCU-ESP32--S3-blue)
-![Input](https://img.shields.io/badge/Input-12--24V-success)
-![USB-C](https://img.shields.io/badge/USB-USB--C-informational)
-![Protection](https://img.shields.io/badge/Protection-Automotive%20Grade-orange)
-![License](https://img.shields.io/badge/License-Proprietary-red)
-
+<p align="center">
+  <a href="https://kaelor9.github.io/Marine-RGB-Light-Controller/">
+    <img
+      src="https://img.shields.io/badge/INSTALL%20FIRMWARE-OPEN%20WEB%20INSTALLER-ffffff?style=for-the-badge&labelColor=11151c"
+      alt="Open Web Installer"
+    >
+  </a>
 </p>
 
 ---
