@@ -2,12 +2,10 @@
     <img src="docs/images/Hero.png" width="100%">
 </p>
 
-<h1 align="center">
-Marine RGB Light Controller
-</h1>
+<h1 align="center">Marine RGB Light Controller</h1>
 
 <p align="center">
-ESP32-S3 based RGB LED controller for marine, automotive and industrial lighting applications.
+Professional ESP32-S3 controller for addressable RGB LED installations in marine, automotive and industrial environments.
 </p>
 
 <p align="center">
@@ -21,56 +19,63 @@ ESP32-S3 based RGB LED controller for marine, automotive and industrial lighting
 
 ---
 
-# Overview
+# About
 
-The Marine RGB Light Controller is a custom ESP32-S3 development board designed for controlling addressable LED installations in demanding environments.
+The **Marine RGB Light Controller** is a custom-designed ESP32-S3 controller built for reliable operation in demanding electrical environments.
 
-Unlike a standard ESP32 development board, it integrates a protected controller power supply, dual 5V logic LED data outputs, high-speed optically isolated digital inputs and multiple expansion interfaces on a single compact PCB.
+Unlike generic ESP32 development boards, it combines protected power electronics, optically isolated inputs, dual level-shifted LED outputs and dedicated expansion interfaces into a single compact PCB.
 
-Originally developed for marine lighting systems, the controller is equally suitable for automotive, off-road and industrial applications.
+Originally developed for marine lighting systems, the controller is equally suitable for automotive, off-road, RV and industrial LED installations.
 
 ---
 
-# Highlights
+# Key Features
 
-- ⚡ Protected 12–24V DC controller power input
-- 🔋 Direct VIN pass-through LED power output (12–24V)
+- ⚡ Protected 12–24V DC controller input
+- 🔋 Direct VIN pass-through LED power output
 - 🌈 Two independent 5V level-shifted LED data outputs
-- 🔀 Compatible with a wide range of digital LED chipsets
-- 🛡 Reverse polarity and surge protection for controller electronics
-- 🔌 USB-C programming
 - 🔒 Two high-speed optically isolated digital inputs
-- 📡 Wi-Fi & Bluetooth
+- 📡 Wi-Fi & Bluetooth LE
+- 🔌 USB-C programming
 - 🔧 GPIO & I²C expansion
+- 🛡 TVS, fuse and reverse polarity protection
 - ⚓ Designed for harsh electrical environments
 
 ---
 
-# Hardware Overview
+# Hardware
 
 <p align="center">
 <img src="docs/images/board-top.png" width="900">
 </p>
 
-The controller integrates everything required for reliable LED control on a single PCB:
+The PCB integrates everything required for a professional LED controller:
 
-- Protected controller power input
-- High-efficiency buck converter
-- Dedicated 3.3V LDO regulator
 - ESP32-S3-WROOM-1-N8R8
+- High-efficiency buck converter
+- Low-noise 3.3V LDO
 - USB-C programming interface
-- Dual 5V logic level shifters
+- Dual 5V level shifters
 - High-speed optocouplers
-- GPIO & I²C expansion header
+- Protected controller power supply
+- GPIO & I²C expansion
+- Dedicated LED power distribution
 
-> [!IMPORTANT]
-> **LED VOUT is a direct pass-through of the input supply.**
->
-> - LED VOUT voltage is always equal to VIN.
-> - The LED supply path is **not reverse polarity protected**.
-> - The LED supply path is **not separately fused**.
-> - Only the controller electronics are protected by the onboard fuse and reverse polarity protection.
-> - External protection should be added where required by the application.
+---
+
+# Technical Specifications
+
+| Feature | Specification |
+|---------|---------------|
+| MCU | ESP32-S3-WROOM-1-N8R8 |
+| Input Voltage | 12–24V DC |
+| Controller Protection | Fuse + Reverse Polarity + TVS |
+| LED Supply | Direct VIN Pass-through |
+| LED Outputs | 2 × 5V Logic (Level Shifted) |
+| Digital Inputs | 2 × Optically Isolated |
+| Wireless | Wi-Fi 2.4GHz + Bluetooth LE |
+| USB | USB-C |
+| Expansion | GPIO + I²C |
 
 ---
 
@@ -80,17 +85,20 @@ The controller integrates everything required for reliable LED control on a sing
 <img src="docs/images/PINOUT 2.png" width="900">
 </p>
 
-| Interface | Description |
-|------------|-------------|
+| Connection | Function |
+|------------|----------|
 | VIN | 12–24V DC Input |
-| AUX Power | Direct VIN pass-through |
-| DATA 1 | 5V Logic LED Data Output |
-| DATA 2 | 5V Logic LED Data Output |
-| ISO Input 1 | Optically Isolated Input |
-| ISO Input 2 | Optically Isolated Input |
+| AUX Power | Direct VIN Pass-through |
+| DATA 1 | 5V LED Data Output |
+| DATA 2 | 5V LED Data Output |
+| ISO IN1 | Optically Isolated Input |
+| ISO IN2 | Optically Isolated Input |
 | SDA / SCL | I²C Expansion |
+| IO8 / IO9 | GPIO Expansion |
 | IO10 / IO11 | GPIO Expansion |
-| 3V3 / 5V | Auxiliary Power Outputs |
+| 3V3 | 3.3V Output |
+| 5V | 5V Output |
+| GND | Ground |
 
 ---
 
@@ -106,49 +114,67 @@ The controller integrates everything required for reliable LED control on a sing
 
 ---
 
-# Technical Specifications
+# Software
 
-| Feature | Specification |
-|---------|---------------|
-| MCU | ESP32-S3-WROOM-1-N8R8 |
-| Input Voltage | 12–24V DC |
-| Controller Supply | Protected (Fuse + Reverse Polarity + TVS) |
-| LED Supply Output | Direct VIN Pass-through |
-| LED Data Outputs | 2 × 5V Logic (Level Shifted) |
-| Optically Isolated Inputs | 2 |
-| USB | USB-C |
-| Wireless | Wi-Fi + Bluetooth |
-| Expansion | GPIO + I²C |
+The firmware is built around the ESP32-S3 platform and is designed to provide a modern and responsive user experience.
+
+Current and planned features include:
+
+- Modern Web UI
+- RGB Color Picker
+- Brightness Control
+- LED Effects
+- Wi-Fi Configuration
+- mDNS Support
+- OTA Firmware Updates
+- FastLED Support
+- Configuration Storage
 
 ---
 
 # Repository Structure
 
 ```text
-docs/
-├── images/
-├── hardware.md
-├── software.md
-
-firmware/
-
-hardware/
-
-README.md
+.
+├── docs/
+│   ├── images/
+│   ├── hardware.md
+│   └── software.md
+│
+├── firmware/
+│
+├── hardware/
+│
+└── README.md
 ```
 
 ---
 
 # Documentation
 
-Additional documentation is available in the **docs** directory.
+Detailed documentation is available inside the **docs** folder.
 
 - Hardware Design
 - Power Supply
 - LED Outputs
-- Optocoupled Inputs
-- Software
+- Optically Isolated Inputs
+- Pinout
+- Firmware
 - Getting Started
+
+---
+
+# Important Information
+
+> [!IMPORTANT]
+>
+> The **LED power output is a direct pass-through of the input supply voltage.**
+>
+> - LED VOUT = VIN
+> - The LED supply is **not reverse polarity protected**
+> - The LED supply is **not fused**
+> - Only the controller electronics are protected by the onboard fuse, TVS diode and reverse polarity protection
+> - Add external protection where required by your installation
 
 ---
 
@@ -156,18 +182,23 @@ Additional documentation is available in the **docs** directory.
 
 | Hardware | Firmware | Documentation |
 |----------|----------|---------------|
-| ✅ Stable | 🚧 In Development | 🚧 In Progress |
+| ✅ Revision 1 Complete | 🚧 In Development | 🚧 In Progress |
 
 ---
 
-# Future Development
+# Roadmap
 
-- Modern web interface
-- OTA firmware updates
-- MQTT support
-- Home Assistant integration
-- Additional LED effects
-- Configuration backup & restore
+- [x] Hardware Revision 1
+- [x] Protected Power Supply
+- [x] USB-C Programming
+- [x] Optically Isolated Inputs
+- [x] Dual LED Outputs
+- [ ] Complete Web Interface
+- [ ] OTA Updates
+- [ ] MQTT Support
+- [ ] Home Assistant Integration
+- [ ] Additional LED Effects
+- [ ] Configuration Backup & Restore
 
 ---
 
