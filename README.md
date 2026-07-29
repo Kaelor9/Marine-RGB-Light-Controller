@@ -13,7 +13,7 @@ Professional ESP32-S3 controller for addressable RGB LED installations in marine
 ![ESP32-S3](https://img.shields.io/badge/ESP32-S3-blue)
 ![Input](https://img.shields.io/badge/Input-12--24V-success)
 ![USB-C](https://img.shields.io/badge/USB-USB--C-informational)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red)
 
 </p>
 
@@ -204,8 +204,15 @@ Detailed documentation is available inside the **docs** folder.
 
 # License
 
-Released under the MIT License.
+This project is proprietary.
 
+Copyright © 2026 Anders Merrild. All rights reserved.
+
+No permission is granted to copy, modify, distribute, manufacture,
+publish, sublicense, or use any part of this project without prior
+written permission from the copyright holder.
+
+See the [LICENSE](LICENSE) file for full terms.
 ---
 
 <p align="center">
