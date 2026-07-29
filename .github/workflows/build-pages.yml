@@ -52,7 +52,7 @@ jobs:
             --fqbn "$FQBN" \
             --output-dir build \
             --export-binaries \
-            Prism_RGB_Controller
+            firmware/Marine_RGB_Controller
 
       - name: Klargør samlet firmwarefil
         shell: bash
