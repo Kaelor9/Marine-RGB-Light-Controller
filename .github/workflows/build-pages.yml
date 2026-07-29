@@ -52,7 +52,7 @@ jobs:
             --fqbn "$FQBN" \
             --output-dir build \
             --export-binaries \
-            firmware/Marine_RGB_Controller
+            Marine_RGB_Controller
 
       - name: Klargør samlet firmwarefil
         shell: bash
