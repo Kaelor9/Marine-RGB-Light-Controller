@@ -271,7 +271,7 @@ See the [LICENSE](LICENSE) file for full terms.
 
 <p align="center">
 
-Designed and developed by <strong>Watcher-33</strong>
+Designed and developed by <strong>Kaelor9</strong>
 
 <br>
 
