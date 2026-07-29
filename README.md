@@ -10,26 +10,46 @@ Professional ESP32-S3 controller for addressable RGB LED installations in marine
 
 <p align="center">
 
-![ESP32-S3](https://img.shields.io/badge/ESP32-S3-blue)
+![ESP32-S3](https://img.shields.io/badge/MCU-ESP32--S3-blue)
 ![Input](https://img.shields.io/badge/Input-12--24V-success)
 ![USB-C](https://img.shields.io/badge/USB-USB--C-informational)
-![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red)
+![Protection](https://img.shields.io/badge/Protection-Automotive%20Grade-orange)
+![License](https://img.shields.io/badge/License-Proprietary-red)
 
 </p>
 
 ---
 
-# About
+## About
 
-The **Marine RGB Light Controller** is a custom-designed ESP32-S3 controller built for reliable operation in demanding electrical environments.
+The **Marine RGB Light Controller** is a custom-designed ESP32-S3 controller developed for reliable operation in demanding electrical environments.
 
-Unlike generic ESP32 development boards, it combines protected power electronics, optically isolated inputs, dual level-shifted LED outputs and dedicated expansion interfaces into a single compact PCB.
+Unlike generic ESP32 development boards, it integrates protected power electronics, optically isolated inputs, dual level-shifted LED outputs and dedicated expansion interfaces into a single compact PCB.
 
-Originally developed for marine lighting systems, the controller is equally suitable for automotive, off-road, RV and industrial LED installations.
+Originally designed for marine lighting systems, the controller is equally suited for automotive, off-road, RV, architectural and industrial LED installations.
 
 ---
 
-# Key Features
+## Why this controller?
+
+Most ESP32 development boards are intended for prototyping and require additional external circuitry before they are suitable for real-world installations.
+
+The Marine RGB Light Controller integrates the essential hardware needed for reliable field deployment:
+
+- Protected 12–24V power input
+- Reverse polarity protection
+- TVS surge suppression
+- Optically isolated inputs
+- Dual 5V LED data outputs
+- USB-C programming
+- GPIO & I²C expansion
+- Compact installation-ready PCB
+
+This significantly reduces external wiring while improving robustness and long-term reliability.
+
+---
+
+## Key Features
 
 - ⚡ Protected 12–24V DC controller input
 - 🔋 Direct VIN pass-through LED power output
@@ -43,7 +63,20 @@ Originally developed for marine lighting systems, the controller is equally suit
 
 ---
 
-# Hardware
+## Applications
+
+The controller is suitable for a wide range of professional LED installations, including:
+
+- ⚓ Marine lighting
+- 🚙 Automotive lighting
+- 🏕 Camper & RV installations
+- 🏭 Industrial automation
+- 🏡 Architectural lighting
+- 💡 Custom RGB LED projects
+
+---
+
+## Hardware
 
 <p align="center">
 <img src="docs/images/board-top.png" width="900">
@@ -63,23 +96,25 @@ The PCB integrates everything required for a professional LED controller:
 
 ---
 
-# Technical Specifications
+## Technical Specifications
 
 | Feature | Specification |
 |---------|---------------|
 | MCU | ESP32-S3-WROOM-1-N8R8 |
+| Flash | 8 MB |
+| PSRAM | 8 MB |
 | Input Voltage | 12–24V DC |
 | Controller Protection | Fuse + Reverse Polarity + TVS |
 | LED Supply | Direct VIN Pass-through |
 | LED Outputs | 2 × 5V Logic (Level Shifted) |
 | Digital Inputs | 2 × Optically Isolated |
-| Wireless | Wi-Fi 2.4GHz + Bluetooth LE |
+| Wireless | Wi-Fi 2.4 GHz + Bluetooth LE |
 | USB | USB-C |
 | Expansion | GPIO + I²C |
 
 ---
 
-# Pinout
+## Pinout
 
 <p align="center">
 <img src="docs/images/PINOUT 2.png" width="900">
@@ -102,7 +137,7 @@ The PCB integrates everything required for a professional LED controller:
 
 ---
 
-# Gallery
+## Gallery
 
 <p align="center">
 
@@ -114,9 +149,11 @@ The PCB integrates everything required for a professional LED controller:
 
 ---
 
-# Software
+## Software
 
-The firmware is built around the ESP32-S3 platform and is designed to provide a modern and responsive user experience.
+The firmware is developed for the ESP32-S3 using the Arduino framework and is designed around a modern, responsive web interface.
+
+Configuration is performed directly from any web browser without requiring additional software. The modular firmware architecture allows new LED effects and features to be added easily.
 
 Current and planned features include:
 
@@ -132,27 +169,37 @@ Current and planned features include:
 
 ---
 
-# Repository Structure
+## Repository Structure
 
 ```text
 .
 ├── docs/
 │   ├── images/
 │   ├── hardware.md
-│   └── software.md
+│   ├── software.md
+│   └── fabrication.md
 │
 ├── firmware/
+│   └── Marine_RGB_Controller/
 │
 ├── hardware/
+│   ├── kicad/
+│   ├── fabrication/
+│   └── 3d/
 │
+├── site/
+│
+├── LICENSE
 └── README.md
 ```
 
 ---
 
-# Documentation
+## Documentation
 
-Detailed documentation is available inside the **docs** folder.
+Project documentation is located inside the **docs** directory.
+
+Available documentation includes:
 
 - Hardware Design
 - Power Supply
@@ -160,11 +207,12 @@ Detailed documentation is available inside the **docs** folder.
 - Optically Isolated Inputs
 - Pinout
 - Firmware
+- Fabrication
 - Getting Started
 
 ---
 
-# Important Information
+## Important Information
 
 > [!IMPORTANT]
 >
@@ -174,11 +222,11 @@ Detailed documentation is available inside the **docs** folder.
 > - The LED supply is **not reverse polarity protected**
 > - The LED supply is **not fused**
 > - Only the controller electronics are protected by the onboard fuse, TVS diode and reverse polarity protection
-> - Add external protection where required by your installation
+> - External protection should be added where required by the installation
 
 ---
 
-# Project Status
+## Project Status
 
 | Hardware | Firmware | Documentation |
 |----------|----------|---------------|
@@ -186,13 +234,18 @@ Detailed documentation is available inside the **docs** folder.
 
 ---
 
-# Roadmap
+## Roadmap
+
+### Hardware
 
 - [x] Hardware Revision 1
 - [x] Protected Power Supply
 - [x] USB-C Programming
-- [x] Optically Isolated Inputs
 - [x] Dual LED Outputs
+- [x] Optically Isolated Inputs
+
+### Firmware
+
 - [ ] Complete Web Interface
 - [ ] OTA Updates
 - [ ] MQTT Support
@@ -202,21 +255,26 @@ Detailed documentation is available inside the **docs** folder.
 
 ---
 
-# License
+## License
 
 This project is proprietary.
 
-Copyright © 2026 Anders Merrild. All rights reserved.
+Copyright © 2026 Anders Merrild
 
-No permission is granted to copy, modify, distribute, manufacture,
-publish, sublicense, or use any part of this project without prior
-written permission from the copyright holder.
+All rights reserved.
+
+No permission is granted to copy, modify, distribute, manufacture, publish, sublicense or use any part of this project without prior written permission from the copyright holder.
 
 See the [LICENSE](LICENSE) file for full terms.
+
 ---
 
 <p align="center">
 
 Designed and developed by <strong>Watcher-33</strong>
+
+<br>
+
+ESP32 • Marine Electronics • Professional RGB Lighting Controller
 
 </p>
