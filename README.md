@@ -1,73 +1,99 @@
 <p align="center">
-  <img src="docs/images/Hero.PNG" width="100%">
+    <img src="docs/images/Hero.PNG" width="100%">
 </p>
 
-# Marine RGB Light Controller
+<h1 align="center">
+Marine RGB Light Controller
+</h1>
 
-A professional ESP32-S3 based RGB lighting controller designed for marine environments.
+<p align="center">
+Professional ESP32-S3 based RGB LED controller for marine and automotive installations.
+</p>
 
-Built for reliability, expandability and seamless integration with FastLED, while providing isolated inputs, wireless connectivity and a robust 12–24V power architecture.
+<p align="center">
+
+![ESP32-S3](https://img.shields.io/badge/ESP32-S3-blue)
+
+![Input](https://img.shields.io/badge/Input-12--24V-success)
+
+![USB-C](https://img.shields.io/badge/USB-USB--C-informational)
+
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+</p>
 
 ---
 
-## Features
+# Overview
 
-- ESP32-S3-WROOM-1
-- 12–24V DC input
-- Reverse polarity protection
-- 2× opto-isolated digital inputs
-- 2× 5V level-shifted FastLED data outputs
-- USB-C programming & power
-- Wi-Fi 2.4 GHz
-- Bluetooth LE
-- GPIO expansion
-- I²C expansion
-- Designed for marine environments
+The Marine RGB Light Controller is a custom ESP32-S3 development board designed for driving addressable RGB LED strips in demanding environments.
+
+Unlike a standard ESP32 board, it integrates a complete protected power supply, optically isolated digital inputs, 5V level shifted LED outputs and expansion interfaces on a single compact PCB.
+
+Designed primarily for marine installations, the controller is equally suited for automotive, off-road and industrial lighting applications.
+
+---
+
+# Highlights
+
+- ⚡ 12–24V DC input
+- 🛡 Reverse polarity & surge protection
+- 🔌 USB-C programming
+- 💡 Two independent WS281x/FastLED outputs
+- 🔀 5V logic level shifting
+- 🔒 Two optically isolated digital inputs
+- 📡 Wi-Fi & Bluetooth
+- 🔧 GPIO & I²C expansion
+- ⚓ Designed for marine environments
 
 ---
 
 # Hardware Overview
 
-| Feature | Description |
-|----------|-------------|
-| MCU | ESP32-S3-WROOM-1 |
-| Supply Voltage | 12–24V DC |
-| LED Outputs | 2 × 5V Level Shifted FastLED Outputs |
-| Digital Inputs | 2 × Opto-Isolated Inputs |
-| Wireless | Wi-Fi 2.4GHz + Bluetooth LE |
-| Expansion | GPIO + I²C |
-| USB | USB-C |
-| Protection | Reverse polarity protection |
+<p align="center">
+<img src="docs/images/board-top.png" width="900">
+</p>
+
+The controller integrates all major circuitry required for reliable LED control:
+
+- Protected power input
+- High efficiency buck converter
+- Dedicated 3.3V regulator
+- ESP32-S3-WROOM-1
+- USB-C programming interface
+- 5V level shifter
+- High-speed optocouplers
+- Expansion header
 
 ---
 
+# Pinout
+
 <p align="center">
+<img src="docs/images/pinout.png" width="900">
+</p>
 
-<img src="docs/images/PINOUT 2.png" width="90%">
+| Interface | Description |
+|------------|-------------|
+| VIN | 12–24V DC Input |
+| AUX Power | LED Supply |
+| DATA 1 | WS281x Output |
+| DATA 2 | WS281x Output |
+| ISO Input 1 | Optically Isolated Input |
+| ISO Input 2 | Optically Isolated Input |
+| SDA / SCL | I²C Expansion |
+| IO10 / IO11 | GPIO Expansion |
+| 3V3 / 5V | Auxiliary Power |
 
-<br><br>
+---
 
 # Gallery
 
 <p align="center">
 
-<img src="docs/images/board-perspective.png" width="90%">
+<img src="docs/images/board-perspective.png" width="48%">
 
-<br><br>
-
-<img src="docs/images/board-top.png" width="90%">
-
-<br><br>
-
-<img src="docs/images/board-bottom.png" width="90%">
-
-<br><br>
-
-<img src="docs/images/board-side-usb.png" width="90%">
-
-<br><br>
-
-<img src="docs/images/board-side-connectors.png" width="90%">
+<img src="docs/images/board-bottom.png" width="48%">
 
 </p>
 
@@ -75,51 +101,75 @@ Built for reliability, expandability and seamless integration with FastLED, whil
 
 # Technical Specifications
 
-| Parameter | Value |
-|-----------|-------|
-| MCU | ESP32-S3-WROOM-1 |
-| Flash | 8 MB |
-| PSRAM | 8 MB |
+| Feature | Specification |
+|---------|---------------|
+| MCU | ESP32-S3-WROOM-1-N8R8 |
 | Input Voltage | 12–24V DC |
+| LED Outputs | 2 × WS281x |
+| Logic Level | 5V |
+| Optocoupled Inputs | 2 |
 | USB | USB-C |
-| Wi-Fi | 2.4 GHz |
-| Bluetooth | BLE |
-| Isolated Inputs | 2 |
-| FastLED Outputs | 2 |
-| GPIO Expansion | Yes |
-| I²C Expansion | Yes |
+| Wireless | Wi-Fi + Bluetooth |
+| Expansion | GPIO + I²C |
 
 ---
 
 # Repository Structure
 
 ```
-Marine-RGB-Light-Controller
-│
-├── docs
-│   └── images
-│
-├── firmware
-│
-├── hardware
-│
-├── LICENSE
-│
-└── README.md
+docs/
+    images/
+    hardware.md
+    software.md
+
+firmware/
+
+hardware/
+
+README.md
 ```
 
 ---
 
-# Future Improvements
+# Documentation
 
+Additional documentation can be found in the **docs** directory.
+
+- Hardware Design
+- Power Supply
+- LED Outputs
+- Optocoupled Inputs
+- Software
+- Getting Started
+
+---
+
+# Project Status
+
+| Hardware | Firmware | Documentation |
+|----------|----------|---------------|
+| ✅ Stable | 🚧 In Development | 🚧 In Progress |
+
+---
+
+# Future Development
+
+- Web interface
 - OTA firmware updates
-- Web configuration interface
+- MQTT support
 - Home Assistant integration
-- Additional FastLED effects
-- CAN bus support
+- Additional LED effects
 
 ---
 
 # License
 
 Released under the MIT License.
+
+---
+
+<p align="center">
+
+Designed and developed by **Watcher-33**
+
+</p>
