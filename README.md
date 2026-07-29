@@ -7,7 +7,7 @@ Marine RGB Light Controller
 </h1>
 
 <p align="center">
-Professional ESP32-S3 based RGB LED controller for marine and automotive installations.
+ESP32-S3 based RGB LED controller for marine and automotive installations.
 </p>
 
 <p align="center">
