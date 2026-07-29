@@ -110,8 +110,6 @@ The PCB integrates everything required for a professional LED controller:
 
 <img src="docs/images/board-bottom.png" width="48%">
 
-<img src="docs/images/schematic.png" width="48%">
-
 </p>
 
 ---
