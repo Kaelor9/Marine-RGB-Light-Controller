@@ -1,6 +1,6 @@
 {
   "name": "Prism RGB Controller",
-  "version": "1.0.0",
+  "version": "v0.3.2",
   "new_install_prompt_erase": true,
   "new_install_improv_wait_time": 0,
   "builds": [
