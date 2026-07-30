@@ -8,34 +8,30 @@
 
 #include "Config.h"
 #include "WebUi.h"
+#include "AppLogo.h"
 
-// ============================================================
-// Types
-// ============================================================
-
-enum class Effect : uint8_t {
-  Static,
-  Rainbow,
-  ColorFade,
-  Disco,
-  Sparkle,
-  Off
-};
+enum class Effect : uint8_t { Static, Rainbow, ColorFade, Disco, Sparkle, Off };
 
 enum class InputAction : uint8_t {
   CycleColors,
   TogglePower,
-  NextEffect
+  NextEffect,
+  PreviousEffect,
+  BrightnessUp,
+  BrightnessDown,
+  WarmWhite,
+  RedScene,
+  GreenScene,
+  BlueScene
 };
 
 struct RuntimeState {
   uint8_t r = 255;
-  uint8_t g = 59;
-  uint8_t b = 48;
+  uint8_t g = 128;
+  uint8_t b = 40;
   uint8_t brightness = 70;
   uint8_t speed = 50;
   uint8_t intensity = 65;
-  uint16_t fadeMs = 800;
   bool power = true;
   Effect effect = Effect::Static;
 };
@@ -48,14 +44,27 @@ struct Settings {
   String colorOrder = "BRG";
   bool restoreState = true;
   bool smoothTransitions = true;
+  bool warmCompensation = true;
   uint16_t defaultFade = 800;
+
+  bool input1Enabled = true;
+  bool input2Enabled = true;
+
   InputAction input1Action = InputAction::CycleColors;
   InputAction input2Action = InputAction::NextEffect;
 };
 
-// ============================================================
-// Globals
-// ============================================================
+struct DebouncedInput {
+  int8_t pin = -1;
+  uint8_t lastRaw = LOW;
+  uint8_t stable = LOW;
+  uint32_t changedAt = 0;
+  uint32_t pressedAt = 0;
+  uint32_t lastRepeatAt = 0;
+  bool initialized = false;
+  bool longPressActive = false;
+  bool dimDirectionUp = true;
+};
 
 CRGB leds[MAX_LED_COUNT];
 WebServer server(80);
@@ -63,21 +72,12 @@ HTTPUpdateServer httpUpdater;
 Preferences prefs;
 RuntimeState state;
 Settings settings;
+DebouncedInput input1;
+DebouncedInput input2;
 
+bool stateDirty = false;
+uint32_t stateDirtyAt = 0;
 uint32_t stateVersion = 1;
-bool settingsDirty = false;
-uint32_t settingsDirtyAt = 0;
-
-struct DebouncedInput {
-  int8_t pin = -1;
-  uint8_t lastRaw = LOW;
-  uint8_t stable = LOW;
-  uint32_t changedAt = 0;
-  bool initialized = false;
-};
-
-DebouncedInput input1{static_cast<int8_t>(ISO_INPUT_1_PIN)};
-DebouncedInput input2{ISO_INPUT_2_PIN};
 
 CRGB displayedColor = CRGB::Black;
 CRGB transitionFrom = CRGB::Black;
@@ -96,43 +96,32 @@ const CRGB PRESET_COLORS[] = {
   CRGB(255, 0, 0),
   CRGB(0, 255, 0),
   CRGB(0, 0, 255),
-  CRGB(255, 180, 0),
+  CRGB(255, 190, 0),
   CRGB(170, 0, 255),
   CRGB(0, 220, 190),
+  CRGB(255, 128, 40),
   CRGB::Black
 };
 constexpr size_t PRESET_COLOR_COUNT = sizeof(PRESET_COLORS) / sizeof(PRESET_COLORS[0]);
 size_t presetIndex = 0;
-
-// ============================================================
-// Utility
-// ============================================================
 
 String jsonEscape(const String& value) {
   String result;
   result.reserve(value.length() + 8);
   for (size_t i = 0; i < value.length(); ++i) {
     const char c = value[i];
-    switch (c) {
-      case '\\': result += "\\\\"; break;
-      case '"': result += "\\\""; break;
-      case '\n': result += "\\n"; break;
-      case '\r': result += "\\r"; break;
-      case '\t': result += "\\t"; break;
-      default: result += c; break;
-    }
+    if (c == '\\') result += "\\\\";
+    else if (c == '"') result += "\\\"";
+    else if (c == '\n') result += "\\n";
+    else if (c == '\r') result += "\\r";
+    else if (c == '\t') result += "\\t";
+    else result += c;
   }
   return result;
 }
 
 uint8_t clampPercent(int value) {
   return static_cast<uint8_t>(constrain(value, 1, 100));
-}
-
-uint8_t effectiveBrightness() {
-  if (!state.power || state.effect == Effect::Off) return 0;
-  const uint16_t scaled = static_cast<uint16_t>(state.brightness) * settings.maxBrightness / 100;
-  return static_cast<uint8_t>(constrain(scaled, 1, 255));
 }
 
 const char* effectName(Effect effect) {
@@ -161,6 +150,13 @@ const char* inputActionName(InputAction action) {
     case InputAction::CycleColors: return "colors";
     case InputAction::TogglePower: return "power";
     case InputAction::NextEffect: return "effects";
+    case InputAction::PreviousEffect: return "previous-effect";
+    case InputAction::BrightnessUp: return "brightness-up";
+    case InputAction::BrightnessDown: return "brightness-down";
+    case InputAction::WarmWhite: return "warm-white";
+    case InputAction::RedScene: return "red";
+    case InputAction::GreenScene: return "green";
+    case InputAction::BlueScene: return "blue";
   }
   return "colors";
 }
@@ -168,37 +164,47 @@ const char* inputActionName(InputAction action) {
 InputAction parseInputAction(const String& value) {
   if (value == "power") return InputAction::TogglePower;
   if (value == "effects") return InputAction::NextEffect;
+  if (value == "previous-effect") return InputAction::PreviousEffect;
+  if (value == "brightness-up") return InputAction::BrightnessUp;
+  if (value == "brightness-down") return InputAction::BrightnessDown;
+  if (value == "warm-white") return InputAction::WarmWhite;
+  if (value == "red") return InputAction::RedScene;
+  if (value == "green") return InputAction::GreenScene;
+  if (value == "blue") return InputAction::BlueScene;
   return InputAction::CycleColors;
 }
 
 void markStateChanged() {
   ++stateVersion;
-  settingsDirty = true;
-  settingsDirtyAt = millis();
+  stateDirty = true;
+  stateDirtyAt = millis();
 }
 
-void startStaticTransition(const CRGB& target, uint16_t durationMs) {
+void startStaticTransition(const CRGB& target) {
   transitionFrom = displayedColor;
   transitionTo = target;
   transitionStartedAt = millis();
-  transitionDuration = durationMs;
-  transitionActive = durationMs > 0 && settings.smoothTransitions;
+  transitionDuration = settings.defaultFade;
+  transitionActive = settings.smoothTransitions && transitionDuration > 0;
   if (!transitionActive) displayedColor = target;
 }
 
-void setStaticColor(uint8_t r, uint8_t g, uint8_t b, uint16_t requestedFade) {
+void setStaticColor(uint8_t r, uint8_t g, uint8_t b) {
   state.r = r;
   state.g = g;
   state.b = b;
   state.effect = Effect::Static;
   state.power = true;
-  startStaticTransition(CRGB(r, g, b), requestedFade);
+  startStaticTransition(CRGB(r, g, b));
   markStateChanged();
 }
 
-// ============================================================
-// Preferences
-// ============================================================
+void setBrightness(int value) {
+  state.brightness = clampPercent(value);
+  state.power = true;
+  if (state.effect == Effect::Off) state.effect = Effect::Static;
+  markStateChanged();
+}
 
 void loadPreferences() {
   prefs.begin("marine-rgb", true);
@@ -210,22 +216,23 @@ void loadPreferences() {
   settings.colorOrder = prefs.getString("order", "BRG");
   settings.restoreState = prefs.getBool("restore", true);
   settings.smoothTransitions = prefs.getBool("smooth", true);
+  settings.warmCompensation = prefs.getBool("warmcomp", true);
   settings.defaultFade = constrain(prefs.getUShort("fade", 800), 0, 5000);
+
+  settings.input1Enabled = prefs.getBool("in1en", true);
+  settings.input2Enabled = prefs.getBool("in2en", true);
   settings.input1Action = static_cast<InputAction>(prefs.getUChar("in1", static_cast<uint8_t>(InputAction::CycleColors)));
   settings.input2Action = static_cast<InputAction>(prefs.getUChar("in2", static_cast<uint8_t>(InputAction::NextEffect)));
 
   if (settings.restoreState) {
     state.r = prefs.getUChar("r", 255);
-    state.g = prefs.getUChar("g", 59);
-    state.b = prefs.getUChar("b", 48);
+    state.g = prefs.getUChar("g", 128);
+    state.b = prefs.getUChar("b", 40);
     state.brightness = constrain(prefs.getUChar("bright", 70), 1, 100);
     state.speed = constrain(prefs.getUChar("speed", 50), 1, 100);
     state.intensity = constrain(prefs.getUChar("intens", 65), 1, 100);
-    state.fadeMs = constrain(prefs.getUShort("statefade", settings.defaultFade), 0, 5000);
     state.power = prefs.getBool("power", true);
     state.effect = static_cast<Effect>(prefs.getUChar("effect", static_cast<uint8_t>(Effect::Static)));
-  } else {
-    state.fadeMs = settings.defaultFade;
   }
 
   prefs.end();
@@ -233,7 +240,6 @@ void loadPreferences() {
 
 void savePreferences() {
   prefs.begin("marine-rgb", false);
-
   prefs.putString("device", settings.deviceName);
   prefs.putString("mdns", settings.mdnsName);
   prefs.putUShort("leds", settings.ledCount);
@@ -241,7 +247,10 @@ void savePreferences() {
   prefs.putString("order", settings.colorOrder);
   prefs.putBool("restore", settings.restoreState);
   prefs.putBool("smooth", settings.smoothTransitions);
+  prefs.putBool("warmcomp", settings.warmCompensation);
   prefs.putUShort("fade", settings.defaultFade);
+  prefs.putBool("in1en", settings.input1Enabled);
+  prefs.putBool("in2en", settings.input2Enabled);
   prefs.putUChar("in1", static_cast<uint8_t>(settings.input1Action));
   prefs.putUChar("in2", static_cast<uint8_t>(settings.input2Action));
 
@@ -252,27 +261,26 @@ void savePreferences() {
     prefs.putUChar("bright", state.brightness);
     prefs.putUChar("speed", state.speed);
     prefs.putUChar("intens", state.intensity);
-    prefs.putUShort("statefade", state.fadeMs);
     prefs.putBool("power", state.power);
     prefs.putUChar("effect", static_cast<uint8_t>(state.effect));
   }
 
   prefs.end();
-  settingsDirty = false;
+  stateDirty = false;
 }
 
-// ============================================================
-// FastLED
-// ============================================================
+void configureInputs() {
+  input1.pin = settings.input1Enabled ? DEFAULT_ISO_INPUT_1_PIN : -1;
+  input2.pin = settings.input2Enabled ? DEFAULT_ISO_INPUT_2_PIN : -1;
+
+  if (input1.pin >= 0) pinMode(input1.pin, INPUT);
+  if (input2.pin >= 0) pinMode(input2.pin, INPUT);
+}
 
 void configureLedController() {
-  if (settings.colorOrder == "RGB") {
-    FastLED.addLeds<WS2811, LED_DATA_PIN_1, RGB>(leds, MAX_LED_COUNT);
-  } else if (settings.colorOrder == "GRB") {
-    FastLED.addLeds<WS2811, LED_DATA_PIN_1, GRB>(leds, MAX_LED_COUNT);
-  } else {
-    FastLED.addLeds<WS2811, LED_DATA_PIN_1, BRG>(leds, MAX_LED_COUNT);
-  }
+  if (settings.colorOrder == "RGB") FastLED.addLeds<WS2811, LED_DATA_PIN_1, RGB>(leds, MAX_LED_COUNT);
+  else if (settings.colorOrder == "GRB") FastLED.addLeds<WS2811, LED_DATA_PIN_1, GRB>(leds, MAX_LED_COUNT);
+  else FastLED.addLeds<WS2811, LED_DATA_PIN_1, BRG>(leds, MAX_LED_COUNT);
 
   FastLED.setDither(true);
   FastLED.setCorrection(TypicalLEDStrip);
@@ -281,8 +289,18 @@ void configureLedController() {
 }
 
 uint16_t effectFrameInterval() {
-  // 1% -> about 80 ms, 100% -> about 10 ms
   return static_cast<uint16_t>(map(state.speed, 1, 100, 80, 10));
+}
+
+CRGB applyWarmCompensation(CRGB color) {
+  if (!settings.warmCompensation || state.effect != Effect::Static) return color;
+
+  // Strongest correction at high brightness. This reduces green and blue
+  // slightly so the selected warm-white preset remains visually warm.
+  const uint8_t strength = map(state.brightness, 1, 100, 0, 42);
+  color.g = qsub8(color.g, scale8(color.g, strength));
+  color.b = qsub8(color.b, scale8(color.b, min<uint8_t>(70, strength + 18)));
+  return color;
 }
 
 void renderStatic() {
@@ -292,24 +310,23 @@ void renderStatic() {
       displayedColor = transitionTo;
       transitionActive = false;
     } else {
-      const uint8_t amount = static_cast<uint8_t>((elapsed * 255UL) / transitionDuration);
-      displayedColor = blend(transitionFrom, transitionTo, amount);
+      displayedColor = blend(transitionFrom, transitionTo, static_cast<uint8_t>((elapsed * 255UL) / transitionDuration));
     }
   } else {
     displayedColor = CRGB(state.r, state.g, state.b);
   }
 
-  fill_solid(leds, settings.ledCount, displayedColor);
+  fill_solid(leds, settings.ledCount, applyWarmCompensation(displayedColor));
 }
 
 void renderRainbow() {
-  fill_rainbow(leds, settings.ledCount, rainbowOffset, 255 / max<uint16_t>(settings.ledCount, 1));
+  const uint8_t delta = settings.ledCount > 0 ? static_cast<uint8_t>(255 / settings.ledCount) : 1;
+  fill_rainbow(leds, settings.ledCount, rainbowOffset, delta);
   rainbowOffset += map(state.speed, 1, 100, 1, 5);
 }
 
 void renderColorFade() {
-  CRGB color = CHSV(fadeHue, 255, 255);
-  fill_solid(leds, settings.ledCount, color);
+  fill_solid(leds, settings.ledCount, CHSV(fadeHue, 255, 255));
   fadeHue += map(state.speed, 1, 100, 1, 4);
 }
 
@@ -317,8 +334,7 @@ void renderDisco() {
   const uint32_t interval = map(state.speed, 1, 100, 650, 90);
   if (millis() - lastDiscoChange >= interval) {
     lastDiscoChange = millis();
-    const uint8_t hue = random8();
-    discoColor = CHSV(hue, 255, 255);
+    discoColor = CHSV(random8(), 255, 255);
   }
   fill_solid(leds, settings.ledCount, discoColor);
 }
@@ -328,7 +344,8 @@ void renderSparkle() {
   base.nscale8_video(map(state.intensity, 1, 100, 35, 145));
   fill_solid(leds, settings.ledCount, base);
 
-  const uint8_t sparkles = map(state.intensity, 1, 100, 1, max<uint16_t>(2, settings.ledCount / 5));
+  const uint8_t maxSparkles = settings.ledCount >= 10 ? settings.ledCount / 5 : 2;
+  const uint8_t sparkles = map(state.intensity, 1, 100, 1, maxSparkles);
   for (uint8_t i = 0; i < sparkles; ++i) {
     if (random8() < map(state.speed, 1, 100, 35, 180)) {
       leds[random16(settings.ledCount)] = blend(CRGB(state.r, state.g, state.b), CRGB::White, 190);
@@ -354,41 +371,35 @@ void updateLeds() {
     }
   }
 
-  FastLED.setBrightness(map(effectiveBrightness(), 0, 100, 0, 255));
+  const uint8_t limitedPercent = static_cast<uint8_t>(
+    (static_cast<uint16_t>(state.brightness) * settings.maxBrightness) / 100
+  );
+  FastLED.setBrightness(map(limitedPercent, 0, 100, 0, 255));
   FastLED.show();
 }
-
-// ============================================================
-// Inputs
-// ============================================================
 
 void cyclePresetColors() {
   const CRGB color = PRESET_COLORS[presetIndex];
   presetIndex = (presetIndex + 1) % PRESET_COLOR_COUNT;
-
   if (color == CRGB::Black) {
     state.power = false;
     state.effect = Effect::Off;
     markStateChanged();
   } else {
-    setStaticColor(color.r, color.g, color.b, state.fadeMs);
+    setStaticColor(color.r, color.g, color.b);
   }
 }
 
-void nextEffect() {
-  switch (state.effect) {
-    case Effect::Static: state.effect = Effect::Rainbow; break;
-    case Effect::Rainbow: state.effect = Effect::ColorFade; break;
-    case Effect::ColorFade: state.effect = Effect::Disco; break;
-    case Effect::Disco: state.effect = Effect::Sparkle; break;
-    case Effect::Sparkle:
-    case Effect::Off: state.effect = Effect::Static; break;
-  }
+void nextEffect(bool reverse = false) {
+  int current = static_cast<int>(state.effect);
+  constexpr int effectCount = 5; // Excludes Off from normal cycling.
+  current = reverse ? (current - 1 + effectCount) % effectCount : (current + 1) % effectCount;
+  state.effect = static_cast<Effect>(current);
   state.power = true;
   markStateChanged();
 }
 
-void executeInputAction(InputAction action) {
+void executeShortAction(InputAction action) {
   switch (action) {
     case InputAction::CycleColors: cyclePresetColors(); break;
     case InputAction::TogglePower:
@@ -396,74 +407,119 @@ void executeInputAction(InputAction action) {
       if (state.power && state.effect == Effect::Off) state.effect = Effect::Static;
       markStateChanged();
       break;
-    case InputAction::NextEffect: nextEffect(); break;
+    case InputAction::NextEffect: nextEffect(false); break;
+    case InputAction::PreviousEffect: nextEffect(true); break;
+    case InputAction::BrightnessUp: setBrightness(state.brightness + 10); break;
+    case InputAction::BrightnessDown: setBrightness(state.brightness - 10); break;
+    case InputAction::WarmWhite: setStaticColor(255, 128, 40); break;
+    case InputAction::RedScene: setStaticColor(255, 0, 0); break;
+    case InputAction::GreenScene: setStaticColor(0, 255, 0); break;
+    case InputAction::BlueScene: setStaticColor(0, 0, 255); break;
   }
+}
+
+void executeHoldStep(DebouncedInput& input, InputAction action) {
+  if (action == InputAction::CycleColors) {
+    cyclePresetColors();
+    return;
+  }
+  if (action == InputAction::NextEffect) {
+    nextEffect(false);
+    return;
+  }
+  if (action == InputAction::PreviousEffect) {
+    nextEffect(true);
+    return;
+  }
+
+  bool increase = action != InputAction::BrightnessDown;
+  if (action == InputAction::TogglePower ||
+      action == InputAction::WarmWhite ||
+      action == InputAction::RedScene ||
+      action == InputAction::GreenScene ||
+      action == InputAction::BlueScene) {
+    increase = input.dimDirectionUp;
+  }
+
+  int next = state.brightness + (increase ? 2 : -2);
+  if (next >= 100) {
+    next = 100;
+    input.dimDirectionUp = false;
+  } else if (next <= 1) {
+    next = 1;
+    input.dimDirectionUp = true;
+  }
+  setBrightness(next);
 }
 
 void updateInput(DebouncedInput& input, InputAction action) {
   if (input.pin < 0) return;
-
+  const uint32_t now = millis();
   const uint8_t raw = digitalRead(input.pin);
+
   if (!input.initialized) {
     input.lastRaw = raw;
     input.stable = raw;
-    input.changedAt = millis();
+    input.changedAt = now;
     input.initialized = true;
     return;
   }
 
   if (raw != input.lastRaw) {
     input.lastRaw = raw;
-    input.changedAt = millis();
+    input.changedAt = now;
   }
 
-  if (raw != input.stable && millis() - input.changedAt >= INPUT_DEBOUNCE_MS) {
+  if (raw != input.stable && now - input.changedAt >= INPUT_DEBOUNCE_MS) {
     input.stable = raw;
     if (input.stable == ISO_INPUT_ACTIVE_LEVEL) {
-      executeInputAction(action);
+      input.pressedAt = now;
+      input.lastRepeatAt = now;
+      input.longPressActive = false;
+    } else {
+      if (!input.longPressActive) executeShortAction(action);
+    }
+  }
+
+  if (input.stable == ISO_INPUT_ACTIVE_LEVEL) {
+    if (!input.longPressActive && now - input.pressedAt >= INPUT_LONG_PRESS_MS) {
+      input.longPressActive = true;
+      input.lastRepeatAt = 0;
+    }
+
+    if (input.longPressActive && (input.lastRepeatAt == 0 || now - input.lastRepeatAt >= INPUT_DIM_STEP_MS)) {
+      input.lastRepeatAt = now;
+      executeHoldStep(input, action);
     }
   }
 }
 
-// ============================================================
-// JSON and API
-// ============================================================
-
 String buildStateJson() {
   String json;
-  json.reserve(900);
-  json += "{\"version\":";
-  json += stateVersion;
-  json += ",\"state\":{";
-  json += "\"r\":" + String(state.r);
-  json += ",\"g\":" + String(state.g);
-  json += ",\"b\":" + String(state.b);
+  json.reserve(1200);
+  json += "{\"version\":" + String(stateVersion) + ",\"state\":{";
+  json += "\"r\":" + String(state.r) + ",\"g\":" + String(state.g) + ",\"b\":" + String(state.b);
   json += ",\"brightness\":" + String(state.brightness);
   json += ",\"speed\":" + String(state.speed);
   json += ",\"intensity\":" + String(state.intensity);
-  json += ",\"fade\":" + String(state.fadeMs);
-  json += ",\"power\":";
-  json += state.power ? "true" : "false";
-  json += ",\"effect\":\"";
-  json += effectName(state.effect);
-  json += "\"},\"settings\":{";
+  json += ",\"power\":" + String(state.power ? "true" : "false");
+  json += ",\"effect\":\"" + String(effectName(state.effect)) + "\"},\"settings\":{";
   json += "\"deviceName\":\"" + jsonEscape(settings.deviceName) + "\"";
   json += ",\"mdnsName\":\"" + jsonEscape(settings.mdnsName) + "\"";
   json += ",\"ledCount\":" + String(settings.ledCount);
   json += ",\"maxBrightness\":" + String(settings.maxBrightness);
   json += ",\"colorOrder\":\"" + settings.colorOrder + "\"";
-  json += ",\"restoreState\":";
-  json += settings.restoreState ? "true" : "false";
-  json += ",\"smoothTransitions\":";
-  json += settings.smoothTransitions ? "true" : "false";
+  json += ",\"restoreState\":" + String(settings.restoreState ? "true" : "false");
+  json += ",\"smoothTransitions\":" + String(settings.smoothTransitions ? "true" : "false");
+  json += ",\"warmCompensation\":" + String(settings.warmCompensation ? "true" : "false");
   json += ",\"defaultFade\":" + String(settings.defaultFade);
+  json += ",\"input1Enabled\":" + String(settings.input1Enabled ? "true" : "false");
+  json += ",\"input2Enabled\":" + String(settings.input2Enabled ? "true" : "false");
   json += ",\"input1Action\":\"" + String(inputActionName(settings.input1Action)) + "\"";
   json += ",\"input2Action\":\"" + String(inputActionName(settings.input2Action)) + "\"";
-  json += "},\"network\":{";
-  json += "\"ip\":\"" + WiFi.localIP().toString() + "\"";
-  json += ",\"ssid\":\"" + jsonEscape(WiFi.SSID()) + "\"";
-  json += ",\"rssi\":" + String(WiFi.RSSI());
-  json += "},\"firmware\":\"" + String(FIRMWARE_VERSION) + "\"}";
+  json += "},\"network\":{\"ip\":\"" + WiFi.localIP().toString() + "\"";
+  json += ",\"ssid\":\"" + jsonEscape(WiFi.SSID()) + "\",\"rssi\":" + String(WiFi.RSSI()) + "}";
+  json += ",\"firmware\":\"" + String(FIRMWARE_VERSION) + "\"}";
   return json;
 }
 
@@ -475,9 +531,23 @@ int argInt(const char* name, int fallback) {
   return server.hasArg(name) ? server.arg(name).toInt() : fallback;
 }
 
-void setupApiRoutes() {
+void setupRoutes() {
   server.on("/", HTTP_GET, []() {
     server.send_P(200, "text/html; charset=utf-8", INDEX_HTML);
+  });
+
+  server.on("/app-logo.png", HTTP_GET, []() {
+    server.sendHeader("Cache-Control", "public, max-age=604800");
+    server.send_P(200, "image/png", reinterpret_cast<const char*>(APP_LOGO_PNG), APP_LOGO_PNG_LEN);
+  });
+
+  server.on("/manifest.webmanifest", HTTP_GET, []() {
+    const String manifest =
+      "{\"name\":\"Prism\",\"short_name\":\"Prism\",\"description\":\"RGB Light Controller\","
+      "\"start_url\":\"/\",\"display\":\"standalone\",\"background_color\":\"#090b10\","
+      "\"theme_color\":\"#090b10\",\"icons\":[{\"src\":\"/app-logo.png\","
+      "\"sizes\":\"512x512\",\"type\":\"image/png\",\"purpose\":\"any maskable\"}]}";
+    server.send(200, "application/manifest+json", manifest);
   });
 
   server.on("/api/state", HTTP_GET, []() {
@@ -485,12 +555,11 @@ void setupApiRoutes() {
   });
 
   server.on("/api/color", HTTP_POST, []() {
-    const uint8_t r = constrain(argInt("r", state.r), 0, 255);
-    const uint8_t g = constrain(argInt("g", state.g), 0, 255);
-    const uint8_t b = constrain(argInt("b", state.b), 0, 255);
-    const uint16_t fade = constrain(argInt("fade", state.fadeMs), 0, 5000);
-    state.fadeMs = fade;
-    setStaticColor(r, g, b, fade);
+    setStaticColor(
+      constrain(argInt("r", state.r), 0, 255),
+      constrain(argInt("g", state.g), 0, 255),
+      constrain(argInt("b", state.b), 0, 255)
+    );
     sendOk();
   });
 
@@ -502,8 +571,7 @@ void setupApiRoutes() {
   });
 
   server.on("/api/brightness", HTTP_POST, []() {
-    state.brightness = clampPercent(argInt("value", state.brightness));
-    markStateChanged();
+    setBrightness(argInt("value", state.brightness));
     sendOk();
   });
 
@@ -534,11 +602,14 @@ void setupApiRoutes() {
 
     settings.restoreState = argInt("restoreState", settings.restoreState) != 0;
     settings.smoothTransitions = argInt("smoothTransitions", settings.smoothTransitions) != 0;
+    settings.warmCompensation = argInt("warmCompensation", settings.warmCompensation) != 0;
     settings.defaultFade = constrain(argInt("defaultFade", settings.defaultFade), 0, 5000);
+
+    settings.input1Enabled = argInt("input1Enabled", settings.input1Enabled) != 0;
+    settings.input2Enabled = argInt("input2Enabled", settings.input2Enabled) != 0;
     settings.input1Action = parseInputAction(server.arg("input1Action"));
     settings.input2Action = parseInputAction(server.arg("input2Action"));
 
-    state.fadeMs = settings.defaultFade;
     markStateChanged();
     savePreferences();
     sendOk();
@@ -574,10 +645,6 @@ void setupApiRoutes() {
   });
 }
 
-// ============================================================
-// Setup
-// ============================================================
-
 void connectWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(settings.mdnsName.c_str());
@@ -598,10 +665,7 @@ void setup() {
   delay(200);
 
   loadPreferences();
-
-  if (ISO_INPUT_1_PIN >= 0) pinMode(ISO_INPUT_1_PIN, INPUT);
-  if (ISO_INPUT_2_PIN >= 0) pinMode(ISO_INPUT_2_PIN, INPUT);
-
+  configureInputs();
   configureLedController();
   connectWiFi();
 
@@ -609,12 +673,12 @@ void setup() {
     MDNS.addService("http", "tcp", 80);
   }
 
-  setupApiRoutes();
+  setupRoutes();
   httpUpdater.setup(&server, "/update", "admin", "marine-rgb");
   server.begin();
 
   Serial.println();
-  Serial.println("Marine RGB Light Controller");
+  Serial.println("Prism RGB Light Controller");
   Serial.printf("Firmware: %s\n", FIRMWARE_VERSION);
   Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
   Serial.printf("mDNS: http://%s.local\n", settings.mdnsName.c_str());
@@ -626,7 +690,7 @@ void loop() {
   updateInput(input1, settings.input1Action);
   updateInput(input2, settings.input2Action);
 
-  if (settingsDirty && millis() - settingsDirtyAt >= SETTINGS_SAVE_DELAY_MS) {
+  if (stateDirty && millis() - stateDirtyAt >= SETTINGS_SAVE_DELAY_MS) {
     savePreferences();
   }
 

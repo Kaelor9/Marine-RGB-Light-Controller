@@ -7,13 +7,21 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#090b10">
-  <title>Marine RGB Light Controller</title>
+  <meta name="description" content="Prism RGB light controller">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Prism">
+  <title>Prism</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="512x512" href="/app-logo.png">
+  <link rel="apple-touch-icon" href="/app-logo.png">
+
   <style>
     :root{
       color-scheme:dark;
-      --bg:#090b10;--panel:#121721;--panel2:#171d28;--line:rgba(255,255,255,.09);
+      --bg:#090b10;--panel:#121721;--line:rgba(255,255,255,.09);
       --text:#f5f7fa;--muted:#929cac;--soft:#667182;--ok:#53d47a;
-      --radius:24px;--small:16px;
+      --radius:24px;--small:16px
     }
     *{box-sizing:border-box}
     html{background:var(--bg)}
@@ -23,34 +31,20 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       background:
         radial-gradient(circle at 50% -10%,rgba(67,96,158,.28),transparent 34%),
         radial-gradient(circle at 100% 75%,rgba(35,117,108,.10),transparent 30%),
-        var(--bg);
+        var(--bg)
     }
     button,input,select{font:inherit}
     button{cursor:pointer}
     .shell{width:min(100%,1120px);margin:auto;padding:20px}
-    .top{
-      display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px
-    }
-    .brand{display:flex;align-items:center;gap:12px}
-    .mark{
-      width:44px;height:44px;border-radius:14px;border:1px solid var(--line);
-      background:
-        radial-gradient(circle,#fff 0 8%,transparent 9%),
-        conic-gradient(from 220deg,#f43,#fd2,#4d6,#2dd,#28f,#a4f,#f43);
-      box-shadow:0 10px 28px rgba(0,0,0,.3)
-    }
-    .brand strong{display:block;font-size:14px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;padding:2px 3px}
+    .brand strong{display:block;font-size:18px;letter-spacing:-.4px}
     .brand span{display:block;color:var(--soft);font-size:11px;margin-top:3px}
-    .status{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
-    .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px #53d47a}
     .tabs{
       position:sticky;top:10px;z-index:10;display:grid;grid-template-columns:repeat(3,1fr);
       gap:8px;padding:7px;border:1px solid var(--line);border-radius:18px;
       background:rgba(12,15,21,.82);backdrop-filter:blur(20px);margin-bottom:16px
     }
-    .tab{
-      min-height:44px;border:0;border-radius:13px;color:var(--muted);background:transparent;font-weight:700
-    }
+    .tab{min-height:44px;border:0;border-radius:13px;color:var(--muted);background:transparent;font-weight:700}
     .tab.active{color:#10141b;background:#f6f7f9}
     .page{display:none}.page.active{display:block}
     .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}
@@ -62,20 +56,11 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     .title{margin:0;font-size:23px;letter-spacing:-.7px}
     .desc{margin:7px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
     .wheel-wrap{display:grid;place-items:center;padding:24px 0 10px}
-    .wheel{
-      width:min(74vw,330px);aspect-ratio:1;border-radius:50%;position:relative;touch-action:none;
-      background:conic-gradient(red,#ff0,#0f0,#0ff,#00f,#f0f,red);
-      box-shadow:0 22px 52px rgba(0,0,0,.36),inset 0 0 0 1px rgba(255,255,255,.15)
-    }
-    .wheel:after{
-      content:"";position:absolute;inset:16%;border-radius:50%;
-      background:radial-gradient(circle at center,#fff 0%,rgba(255,255,255,.82) 8%,transparent 68%),
-                 linear-gradient(to right,#fff,transparent);
-      mix-blend-mode:screen;opacity:.75
-    }
+    .wheel-shell{position:relative;width:min(74vw,330px);aspect-ratio:1}
+    #hueWheel{display:block;width:100%;height:100%;border-radius:50%;touch-action:none;box-shadow:0 22px 52px rgba(0,0,0,.36)}
     .picker{
-      position:absolute;width:28px;height:28px;border:4px solid white;border-radius:50%;
-      transform:translate(-50%,-50%);box-shadow:0 3px 15px rgba(0,0,0,.75);z-index:3;pointer-events:none
+      position:absolute;width:26px;height:26px;border:4px solid #fff;border-radius:50%;
+      transform:translate(-50%,-50%);box-shadow:0 3px 15px rgba(0,0,0,.78);pointer-events:none
     }
     .preview{
       height:68px;border:1px solid var(--line);border-radius:18px;margin-top:15px;
@@ -92,8 +77,15 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     .control-head span:last-child{color:var(--muted)}
     input[type=range]{width:100%;accent-color:#fff}
     .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:20px}
-    .swatch{aspect-ratio:1;border:2px solid transparent;border-radius:14px;background:var(--c)}
+    .swatch{
+      position:relative;aspect-ratio:1;border:2px solid transparent;border-radius:14px;background:var(--c);
+      color:#fff;font-size:0
+    }
     .swatch.active{border-color:white;box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+    .swatch[data-label]:hover:after{
+      content:attr(data-label);position:absolute;left:50%;bottom:-27px;transform:translateX(-50%);
+      white-space:nowrap;padding:4px 7px;border-radius:8px;background:#111722;color:#fff;font-size:10px;z-index:5
+    }
     .effects{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-top:20px}
     .effect{
       min-height:105px;text-align:left;padding:16px;border:1px solid var(--line);
@@ -109,9 +101,9 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     .row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:18px;padding:13px 0}
     .row+.row{border-top:1px solid rgba(255,255,255,.055)}
     .row label strong{display:block;font-size:13px}
-    .row label span{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+    .row label span{display:block;color:var(--muted);font-size:11px;line-height:1.45;margin-top:4px}
     .field{
-      width:170px;max-width:45vw;border:1px solid var(--line);border-radius:12px;
+      width:180px;max-width:46vw;border:1px solid var(--line);border-radius:12px;
       background:#0d1118;color:var(--text);padding:10px 12px
     }
     .toggle{width:48px;height:28px;border-radius:999px;border:0;background:#303846;padding:3px}
@@ -124,6 +116,13 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
     .btn.primary{color:#10141b;background:#f6f7f9}
     .btn.danger{color:#ffaba5;border-color:rgba(255,100,90,.25)}
+    .network-status{
+      display:flex;align-items:center;justify-content:space-between;gap:16px;
+      margin-top:18px;padding:15px 16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.025)
+    }
+    .network-status div{display:flex;align-items:center;gap:9px}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px #53d47a}
+    .network-status span{color:var(--muted);font-size:12px}
     details{border:1px solid var(--line);border-radius:18px;margin-top:12px;background:rgba(255,255,255,.018)}
     summary{padding:16px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:750}
     .details{padding:0 16px 16px}
@@ -133,15 +132,14 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       color:var(--text);font-size:12px;transition:.2s;z-index:99
     }
     .toast.show{opacity:1;transform:translate(-50%,0)}
-    @media(max-width:820px){.grid{grid-template-columns:1fr}.shell{padding:12px}.card{padding:18px}.top{padding:4px}.effects{grid-template-columns:1fr 1fr}}
-    @media(max-width:480px){.quick{grid-template-columns:repeat(4,1fr)}.effects{grid-template-columns:1fr}.field{width:145px}.brand strong{font-size:12px}}
+    @media(max-width:820px){.grid{grid-template-columns:1fr}.shell{padding:12px}.card{padding:18px}.effects{grid-template-columns:1fr 1fr}}
+    @media(max-width:480px){.effects{grid-template-columns:1fr}.field{width:145px}.brand strong{font-size:16px}}
   </style>
 </head>
 <body>
 <div class="shell">
   <header class="top">
-    <div class="brand"><div class="mark"></div><div><strong id="deviceTitle">Marine RGB</strong><span>Light Controller</span></div></div>
-    <div class="status"><i class="dot"></i><span id="connectionText">Connected</span></div>
+    <div class="brand"><strong id="deviceTitle">Prism</strong><span>RGB Light Controller</span></div>
   </header>
 
   <nav class="tabs">
@@ -157,10 +155,13 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <h1 class="title">Color</h1>
           <p class="desc">Choose a color for the complete LED strip.</p>
           <div class="wheel-wrap">
-            <div class="wheel" id="wheel"><div class="picker" id="picker"></div></div>
+            <div class="wheel-shell">
+              <canvas id="hueWheel" width="660" height="660"></canvas>
+              <div class="picker" id="picker"></div>
+            </div>
           </div>
           <div class="preview" id="preview">
-            <strong id="colorLabel">RGB color</strong>
+            <strong id="colorLabel">Selected color</strong>
             <button class="power" id="powerBtn" aria-label="Toggle power">⏻</button>
           </div>
           <div class="quick" id="quickColors"></div>
@@ -168,29 +169,18 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 
         <article class="card">
           <h2 class="title">Light output</h2>
-          <p class="desc">Changes are applied immediately without reloading the page.</p>
+          <p class="desc">Color and brightness are applied immediately. Fade timing is configured once under Advanced Settings.</p>
 
           <div class="control">
             <div class="control-head"><span>Brightness</span><span id="brightnessValue">70%</span></div>
             <input id="brightness" type="range" min="1" max="100" value="70">
           </div>
 
-          <div class="control">
-            <div class="control-head"><span>Transition</span><span id="fadeValue">800 ms</span></div>
-            <input id="fade" type="range" min="0" max="3000" step="50" value="800">
-          </div>
-
-          <div class="actions">
-            <button class="btn primary" id="applyColor">Apply color</button>
-            <button class="btn" id="whiteBtn">Soft white</button>
-            <button class="btn" id="offBtn">Turn off</button>
-          </div>
-
           <details>
             <summary>Current output</summary>
             <div class="details">
               <div class="row"><label><strong>Mode</strong><span>Active renderer</span></label><span id="currentMode">Static</span></div>
-              <div class="row"><label><strong>RGB</strong><span>Selected color</span></label><span id="rgbValue">255, 59, 48</span></div>
+              <div class="row"><label><strong>RGB</strong><span>Selected color</span></label><span id="rgbValue">255, 128, 40</span></div>
             </div>
           </details>
         </article>
@@ -227,19 +217,25 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <h1 class="title">Settings</h1>
           <p class="desc">Common installation and startup options.</p>
 
+          <div class="network-status">
+            <div><i class="dot"></i><span>Controller connected</span></div>
+            <strong id="connectionText">—</strong>
+          </div>
+
           <div class="form-section">
             <div class="section-name">General</div>
-            <div class="row"><label><strong>Device name</strong><span>Shown at the top of the interface</span></label><input class="field" id="deviceName" maxlength="31"></div>
-            <div class="row"><label><strong>Startup behavior</strong><span>Restores the previous light state</span></label><button class="toggle" id="restoreState"></button></div>
-            <div class="row"><label><strong>Maximum brightness</strong><span>Global output safety limit</span></label><input class="field" id="maxBrightness" type="number" min="1" max="100"></div>
+            <div class="row"><label><strong>Device name</strong><span>Shown at the top and used as the installed app name.</span></label><input class="field" id="deviceName" maxlength="31"></div>
+            <div class="row"><label><strong>Restore previous state</strong><span>Restores the last color, brightness and effect after startup.</span></label><button class="toggle" id="restoreState"></button></div>
+            <div class="row"><label><strong>Maximum brightness</strong><span>Global output safety limit.</span></label><input class="field" id="maxBrightness" type="number" min="1" max="100"></div>
           </div>
 
           <div class="form-section">
             <div class="section-name">LED configuration</div>
-            <div class="row"><label><strong>LED count</strong><span>Active pixels on output 1</span></label><input class="field" id="ledCount" type="number" min="1" max="300"></div>
-            <div class="row"><label><strong>Color order</strong><span>Applied after restart</span></label>
+            <div class="row"><label><strong>LED count</strong><span>Active pixels on output 1.</span></label><input class="field" id="ledCount" type="number" min="1" max="300"></div>
+            <div class="row"><label><strong>Color order</strong><span>Applied after restart.</span></label>
               <select class="field" id="colorOrder"><option>RGB</option><option>GRB</option><option>BRG</option></select>
             </div>
+            <div class="row"><label><strong>Warm-white compensation</strong><span>Reduces the cold shift that can appear at high brightness.</span></label><button class="toggle" id="warmCompensation"></button></div>
           </div>
 
           <div class="actions">
@@ -250,27 +246,55 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 
         <article class="card">
           <h2 class="title">Advanced settings</h2>
-          <p class="desc">Technical behavior for inputs, transitions and networking.</p>
+          <p class="desc">Technical behavior for transitions, isolated inputs and networking.</p>
 
           <div class="form-section">
             <div class="section-name">Transitions</div>
-            <div class="row"><label><strong>Smooth transitions</strong><span>Fade between static colors</span></label><button class="toggle" id="smoothTransitions"></button></div>
-            <div class="row"><label><strong>Default fade</strong><span>Transition duration in milliseconds</span></label><input class="field" id="defaultFade" type="number" min="0" max="5000"></div>
+            <div class="row"><label><strong>Smooth transitions</strong><span>Fade between static colors instead of switching instantly.</span></label><button class="toggle" id="smoothTransitions"></button></div>
+            <div class="row"><label><strong>Default fade</strong><span>Transition duration in milliseconds. Zero means instant.</span></label><input class="field" id="defaultFade" type="number" min="0" max="5000"></div>
           </div>
 
           <div class="form-section">
-            <div class="section-name">Isolated inputs</div>
-            <div class="row"><label><strong>Input 1 action</strong><span>Default: cycle preset colors</span></label>
-              <select class="field" id="input1Action"><option value="colors">Cycle colors</option><option value="power">Toggle power</option><option value="effects">Next effect</option></select>
+            <div class="section-name">Isolated input 1</div>
+            <div class="row"><label><strong>Enabled</strong><span>Enables the fixed hardware input on GPIO38.</span></label><button class="toggle" id="input1Enabled"></button></div>
+            <div class="row"><label><strong>Action</strong><span id="input1Help">Select an action to see how short and long presses behave.</span></label>
+              <select class="field input-action" id="input1Action">
+                <option value="colors">Cycle preset colors</option>
+                <option value="power">Toggle power / hold to dim</option>
+                <option value="effects">Next effect</option>
+                <option value="previous-effect">Previous effect</option>
+                <option value="brightness-up">Brightness up</option>
+                <option value="brightness-down">Brightness down</option>
+                <option value="warm-white">Warm white</option>
+                <option value="red">Red scene</option>
+                <option value="green">Green scene</option>
+                <option value="blue">Blue scene</option>
+              </select>
             </div>
-            <div class="row"><label><strong>Input 2 action</strong><span>Used when input 2 is enabled</span></label>
-              <select class="field" id="input2Action"><option value="effects">Next effect</option><option value="power">Toggle power</option><option value="colors">Cycle colors</option></select>
+          </div>
+
+          <div class="form-section">
+            <div class="section-name">Isolated input 2</div>
+            <div class="row"><label><strong>Enabled</strong><span>Enables the fixed hardware input on GPIO39.</span></label><button class="toggle" id="input2Enabled"></button></div>
+            <div class="row"><label><strong>Action</strong><span id="input2Help">Select an action to see how short and long presses behave.</span></label>
+              <select class="field input-action" id="input2Action">
+                <option value="effects">Next effect</option>
+                <option value="power">Toggle power / hold to dim</option>
+                <option value="colors">Cycle preset colors</option>
+                <option value="previous-effect">Previous effect</option>
+                <option value="brightness-up">Brightness up</option>
+                <option value="brightness-down">Brightness down</option>
+                <option value="warm-white">Warm white</option>
+                <option value="red">Red scene</option>
+                <option value="green">Green scene</option>
+                <option value="blue">Blue scene</option>
+              </select>
             </div>
           </div>
 
           <div class="form-section">
             <div class="section-name">Network</div>
-            <div class="row"><label><strong>mDNS hostname</strong><span>Available as hostname.local</span></label><input class="field" id="mdnsName" maxlength="31"></div>
+            <div class="row"><label><strong>mDNS hostname</strong><span>Available as hostname.local.</span></label><input class="field" id="mdnsName" maxlength="31"></div>
           </div>
 
           <details>
@@ -291,14 +315,28 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-let state={r:255,g:59,b:48,power:true,brightness:70,effect:"static",speed:50,intensity:65,fade:800};
-let dragging=false, saveTimer;
+let state={r:255,g:128,b:40,power:true,brightness:70,effect:"static",speed:50,intensity:65};
+let dragging=false, colorTimer, controlTimer, settingsLoaded=false;
+
+const actionHelp={
+  colors:"A short press selects the next preset color. A long press repeats through the presets.",
+  power:"A short press turns the light on or off. Hold the input to raise or lower brightness continuously.",
+  effects:"A short press selects the next effect. Holding repeats through the effect list.",
+  "previous-effect":"A short press selects the previous effect. Holding repeats backwards.",
+  "brightness-up":"Each short press increases brightness. Holding ramps it upward continuously.",
+  "brightness-down":"Each short press decreases brightness. Holding ramps it downward continuously.",
+  "warm-white":"A short press selects the calibrated warm-white preset. Holding adjusts brightness.",
+  red:"A short press selects the red scene. Holding adjusts brightness.",
+  green:"A short press selects the green scene. Holding adjusts brightness.",
+  blue:"A short press selects the blue scene. Holding adjusts brightness."
+};
 
 function toast(text){const t=$("#toast");t.textContent=text;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1700)}
 function form(data){return new URLSearchParams(data).toString()}
 async function api(path,data){
   const opt=data?{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form(data)}:{};
-  const r=await fetch(path,opt); if(!r.ok)throw new Error(await r.text()); return r.headers.get("content-type")?.includes("json")?r.json():r.text()
+  const r=await fetch(path,opt);if(!r.ok)throw new Error(await r.text());
+  return r.headers.get("content-type")?.includes("json")?r.json():r.text()
 }
 function hsvToRgb(h,s,v){
   let f=(n,k=(n+h/60)%6)=>v-v*s*Math.max(Math.min(k,4-k,1),0);
@@ -309,53 +347,97 @@ function rgbToHsv(r,g,b){
   if(d){if(mx===r)h=60*((g-b)/d%6);else if(mx===g)h=60*((b-r)/d+2);else h=60*((r-g)/d+4)}
   if(h<0)h+=360;return [h,mx?d/mx:0,mx]
 }
+function drawWheel(){
+  const c=$("#hueWheel"),ctx=c.getContext("2d"),w=c.width,h=c.height,cx=w/2,cy=h/2,r=w/2-6;
+  const img=ctx.createImageData(w,h),d=img.data;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const dx=x-cx,dy=y-cy,dist=Math.hypot(dx,dy),i=(y*w+x)*4;
+    if(dist>r){d[i+3]=0;continue}
+    const hue=(Math.atan2(dy,dx)*180/Math.PI+90+360)%360;
+    const sat=Math.pow(Math.min(dist/r,1),0.72);
+    const [rr,gg,bb]=hsvToRgb(hue,sat,1);
+    d[i]=rr;d[i+1]=gg;d[i+2]=bb;d[i+3]=255
+  }
+  ctx.putImageData(img,0,0)
+}
 function setWheelFromRgb(){
-  const [h,s]=rgbToHsv(state.r,state.g,state.b), w=$("#wheel"), p=$("#picker"), rad=(h-90)*Math.PI/180, radius=(w.clientWidth/2-18)*s;
-  p.style.left=(w.clientWidth/2+Math.cos(rad)*radius)+"px";p.style.top=(w.clientHeight/2+Math.sin(rad)*radius)+"px"
+  const [h,s]=rgbToHsv(state.r,state.g,state.b),box=$(".wheel-shell"),p=$("#picker"),rad=(h-90)*Math.PI/180,radius=(box.clientWidth/2-9)*Math.pow(s,1/0.72);
+  p.style.left=(box.clientWidth/2+Math.cos(rad)*radius)+"px";
+  p.style.top=(box.clientHeight/2+Math.sin(rad)*radius)+"px"
 }
 function pick(e){
-  const w=$("#wheel"),r=w.getBoundingClientRect(),x=(e.touches?e.touches[0].clientX:e.clientX)-r.left-r.width/2,y=(e.touches?e.touches[0].clientY:e.clientY)-r.top-r.height/2;
-  let dist=Math.min(Math.hypot(x,y)/(r.width/2-18),1),h=(Math.atan2(y,x)*180/Math.PI+90+360)%360;
-  [state.r,state.g,state.b]=hsvToRgb(h,dist,1);state.effect="static";state.power=true;render();scheduleColor()
+  const box=$("#hueWheel").getBoundingClientRect(),x=e.clientX-box.left-box.width/2,y=e.clientY-box.top-box.height/2;
+  const dist=Math.min(Math.hypot(x,y)/(box.width/2-4),1),h=(Math.atan2(y,x)*180/Math.PI+90+360)%360;
+  [state.r,state.g,state.b]=hsvToRgb(h,Math.pow(dist,.72),1);
+  state.effect="static";state.power=true;render();scheduleColor()
 }
-function scheduleColor(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>api("/api/color",{r:state.r,g:state.g,b:state.b,power:1,fade:state.fade}).catch(()=>{}),45)}
+function scheduleColor(){
+  clearTimeout(colorTimer);
+  colorTimer=setTimeout(()=>api("/api/color",{r:state.r,g:state.g,b:state.b,power:1}).catch(()=>{}),55)
+}
+function scheduleControl(path,data){
+  clearTimeout(controlTimer);controlTimer=setTimeout(()=>api(path,data).catch(()=>{}),70)
+}
 function render(){
-  const c=`rgb(${state.r},${state.g},${state.b})`;$("#preview").style.setProperty("--selected",c);$("#rgbValue").textContent=`${state.r}, ${state.g}, ${state.b}`;
-  $("#brightness").value=state.brightness;$("#brightnessValue").textContent=state.brightness+"%";
-  $("#fade").value=state.fade;$("#fadeValue").textContent=state.fade+" ms";
-  $("#speed").value=state.speed;$("#speedValue").textContent=state.speed+"%";
-  $("#intensity").value=state.intensity;$("#intensityValue").textContent=state.intensity+"%";
-  $("#currentMode").textContent=state.effect;$("#powerBtn").style.opacity=state.power?1:.45;
+  const c=`rgb(${state.r},${state.g},${state.b})`;
+  $("#preview").style.setProperty("--selected",c);$("#rgbValue").textContent=`${state.r}, ${state.g}, ${state.b}`;
+  if(document.activeElement!==$("#brightness"))$("#brightness").value=state.brightness;
+  $("#brightnessValue").textContent=state.brightness+"%";
+  if(document.activeElement!==$("#speed"))$("#speed").value=state.speed;
+  $("#speedValue").textContent=state.speed+"%";
+  if(document.activeElement!==$("#intensity"))$("#intensity").value=state.intensity;
+  $("#intensityValue").textContent=state.intensity+"%";
+  $("#currentMode").textContent=state.effect;
+  $("#powerBtn").style.opacity=state.power?1:.45;
   $$(".effect").forEach(x=>x.classList.toggle("active",x.dataset.effect===state.effect));
   setWheelFromRgb()
 }
-const colors=[[255,59,48],[48,209,88],[10,132,255],[255,214,10],[191,90,242],[64,224,208],[255,255,255],[255,128,40]];
-colors.forEach(c=>{let b=document.createElement("button");b.className="swatch";b.style.setProperty("--c",`rgb(${c})`);b.onclick=()=>{[state.r,state.g,state.b]=c;state.power=true;state.effect="static";render();scheduleColor()};$("#quickColors").appendChild(b)});
-$$(".tab").forEach(b=>b.onclick=()=>{$$(".tab").forEach(x=>x.classList.remove("active"));$$(".page").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("#"+b.dataset.page).classList.add("active")});
-$("#wheel").addEventListener("pointerdown",e=>{dragging=true;$("#wheel").setPointerCapture(e.pointerId);pick(e)});
-$("#wheel").addEventListener("pointermove",e=>dragging&&pick(e));$("#wheel").addEventListener("pointerup",()=>dragging=false);
-$("#brightness").oninput=e=>{state.brightness=+e.target.value;render();api("/api/brightness",{value:state.brightness}).catch(()=>{})};
-$("#fade").oninput=e=>{state.fade=+e.target.value;render()};
-$("#speed").oninput=e=>{state.speed=+e.target.value;render();api("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity}).catch(()=>{})};
-$("#intensity").oninput=e=>{state.intensity=+e.target.value;render();api("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity}).catch(()=>{})};
+const colors=[
+  {rgb:[255,0,0],label:"Red"},{rgb:[0,255,0],label:"Green"},{rgb:[0,0,255],label:"Blue"},
+  {rgb:[255,190,0],label:"Amber"},{rgb:[170,0,255],label:"Violet"},{rgb:[0,220,190],label:"Turquoise"},
+  {rgb:[255,128,40],label:"Warm white"},{rgb:[255,255,255],label:"White"}
+];
+colors.forEach(({rgb,label})=>{
+  const b=document.createElement("button");b.className="swatch";b.style.setProperty("--c",`rgb(${rgb})`);b.dataset.label=label;b.title=label;
+  b.onclick=()=>{[state.r,state.g,state.b]=rgb;state.power=true;state.effect="static";render();scheduleColor()};
+  $("#quickColors").appendChild(b)
+});
+$$(".tab").forEach(b=>b.onclick=()=>{
+  $$(".tab").forEach(x=>x.classList.remove("active"));$$(".page").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");$("#"+b.dataset.page).classList.add("active")
+});
+$("#hueWheel").addEventListener("pointerdown",e=>{dragging=true;$("#hueWheel").setPointerCapture(e.pointerId);pick(e)});
+$("#hueWheel").addEventListener("pointermove",e=>dragging&&pick(e));
+$("#hueWheel").addEventListener("pointerup",()=>dragging=false);
+$("#brightness").oninput=e=>{state.brightness=+e.target.value;render();scheduleControl("/api/brightness",{value:state.brightness})};
+$("#speed").oninput=e=>{state.speed=+e.target.value;render();scheduleControl("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity})};
+$("#intensity").oninput=e=>{state.intensity=+e.target.value;render();scheduleControl("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity})};
 $("#powerBtn").onclick=()=>{state.power=!state.power;api("/api/power",{value:state.power?1:0});render()};
-$("#offBtn").onclick=()=>{state.power=false;api("/api/power",{value:0});render()};
-$("#whiteBtn").onclick=()=>{state.r=255;state.g=210;state.b=145;state.effect="static";state.power=true;render();scheduleColor()};
-$("#applyColor").onclick=()=>api("/api/color",{r:state.r,g:state.g,b:state.b,power:1,fade:state.fade}).then(()=>toast("Color applied"));
 $$(".effect").forEach(b=>b.onclick=()=>{state.effect=b.dataset.effect;state.power=state.effect!=="off";api("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity});render()});
 
 function toggle(el,value){el.classList.toggle("on",!!value);el.dataset.value=value?1:0}
 $$(".toggle").forEach(x=>x.onclick=()=>toggle(x,x.dataset.value!=="1"));
+function updateActionHelp(){
+  $("#input1Help").textContent=actionHelp[$("#input1Action").value]||"";
+  $("#input2Help").textContent=actionHelp[$("#input2Action").value]||""
+}
+$$(".input-action").forEach(x=>x.onchange=updateActionHelp);
 
-async function load(){
+async function load(full=false){
   try{
     const d=await api("/api/state");Object.assign(state,d.state);
-    $("#deviceName").value=d.settings.deviceName;$("#deviceTitle").textContent=d.settings.deviceName;
-    $("#ledCount").value=d.settings.ledCount;$("#colorOrder").value=d.settings.colorOrder;
-    $("#maxBrightness").value=d.settings.maxBrightness;$("#defaultFade").value=d.settings.defaultFade;
-    $("#mdnsName").value=d.settings.mdnsName;$("#input1Action").value=d.settings.input1Action;$("#input2Action").value=d.settings.input2Action;
-    toggle($("#restoreState"),d.settings.restoreState);toggle($("#smoothTransitions"),d.settings.smoothTransitions);
-    render();$("#connectionText").textContent=d.network.ip||"Connected"
+    if(full||!settingsLoaded){
+      $("#deviceName").value=d.settings.deviceName;$("#deviceTitle").textContent=d.settings.deviceName;
+      $("#ledCount").value=d.settings.ledCount;$("#colorOrder").value=d.settings.colorOrder;
+      $("#maxBrightness").value=d.settings.maxBrightness;$("#defaultFade").value=d.settings.defaultFade;
+      $("#mdnsName").value=d.settings.mdnsName;
+      $("#input1Action").value=d.settings.input1Action;$("#input2Action").value=d.settings.input2Action;
+      toggle($("#input1Enabled"),d.settings.input1Enabled);toggle($("#input2Enabled"),d.settings.input2Enabled);
+      toggle($("#restoreState"),d.settings.restoreState);toggle($("#smoothTransitions"),d.settings.smoothTransitions);
+      toggle($("#warmCompensation"),d.settings.warmCompensation);
+      updateActionHelp();settingsLoaded=true
+    }
+    $("#connectionText").textContent=d.network.ip||"—";render()
   }catch(e){$("#connectionText").textContent="Offline"}
 }
 $("#saveSettings").onclick=async()=>{
@@ -363,13 +445,17 @@ $("#saveSettings").onclick=async()=>{
     deviceName:$("#deviceName").value,ledCount:$("#ledCount").value,colorOrder:$("#colorOrder").value,
     maxBrightness:$("#maxBrightness").value,restoreState:$("#restoreState").dataset.value||0,
     smoothTransitions:$("#smoothTransitions").dataset.value||0,defaultFade:$("#defaultFade").value,
-    mdnsName:$("#mdnsName").value,input1Action:$("#input1Action").value,input2Action:$("#input2Action").value
-  });toast("Settings saved");setTimeout(load,300)
+    warmCompensation:$("#warmCompensation").dataset.value||0,
+    mdnsName:$("#mdnsName").value,
+    input1Enabled:$("#input1Enabled").dataset.value||0,input2Enabled:$("#input2Enabled").dataset.value||0,
+    input1Action:$("#input1Action").value,input2Action:$("#input2Action").value
+  });
+  toast("Settings saved — restart if the color order changed");setTimeout(()=>load(true),300)
 };
 $("#restartBtn").onclick=()=>confirm("Restart the controller?")&&api("/api/restart",{}).then(()=>toast("Restarting"));
 $("#wifiResetBtn").onclick=()=>confirm("Erase saved Wi-Fi and restart?")&&api("/api/reset-wifi",{});
 $("#factoryResetBtn").onclick=()=>confirm("Erase all controller settings?")&&api("/api/factory-reset",{});
-setInterval(()=>{if(!dragging)load()},700);addEventListener("resize",setWheelFromRgb);load();
+drawWheel();addEventListener("resize",setWheelFromRgb);setInterval(()=>{if(!dragging)load(false)},900);load(true);
 </script>
 </body>
 </html>
