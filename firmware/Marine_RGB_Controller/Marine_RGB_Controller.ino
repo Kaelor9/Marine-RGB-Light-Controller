@@ -560,6 +560,9 @@ int argInt(const char* name, int fallback) {
 
 void setupRoutes() {
   server.on("/", HTTP_GET, []() {
+    server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    server.sendHeader("Pragma", "no-cache");
+    server.sendHeader("Expires", "0");
     server.send_P(200, "text/html; charset=utf-8", INDEX_HTML);
   });
 

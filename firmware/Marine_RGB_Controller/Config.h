@@ -21,4 +21,4 @@ constexpr uint32_t INPUT_LONG_PRESS_MS = 550;
 constexpr uint32_t INPUT_DIM_STEP_MS = 90;
 constexpr uint32_t SETTINGS_SAVE_DELAY_MS = 900;
 
-constexpr char FIRMWARE_VERSION[] = "0.4.4";
+constexpr char FIRMWARE_VERSION[] = "0.4.5";
