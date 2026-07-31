@@ -588,8 +588,8 @@ void setupRoutes() {
   server.on("/manifest.webmanifest", HTTP_GET, []() {
     const String manifest =
       "{\"name\":\"Prism\",\"short_name\":\"Prism\",\"description\":\"RGB Light Controller\","
-      "\"start_url\":\"/\",\"display\":\"standalone\",\"background_color\":\"#0b1018\","
-      "\"theme_color\":\"#0b1018\",\"icons\":[{\"src\":\"/app-logo.png\","
+      "\"start_url\":\"/\",\"display\":\"standalone\",\"background_color\":\"#090b10\","
+      "\"theme_color\":\"#090b10\",\"icons\":[{\"src\":\"/app-logo.png\","
       "\"sizes\":\"512x512\",\"type\":\"image/png\",\"purpose\":\"any maskable\"}]}";
     server.send(200, "application/manifest+json", manifest);
   });
