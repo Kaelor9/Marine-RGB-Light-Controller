@@ -23,7 +23,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       --text:#f5f7fa;--muted:#929cac;--soft:#667182;--ok:#53d47a;
       --radius:24px;--small:16px
     }
-    *{box-sizing:border-box}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     html{background:var(--bg)}
     body{
       margin:0;min-height:100vh;color:var(--text);
@@ -31,14 +31,14 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       background:
         radial-gradient(circle at 50% -10%,rgba(67,96,158,.28),transparent 34%),
         radial-gradient(circle at 100% 75%,rgba(35,117,108,.10),transparent 30%),
-        var(--bg)
+        var(--bg);
+      user-select:none;-webkit-user-select:none;-webkit-touch-callout:none
     }
     button,input,select{font:inherit}
+    input,select,textarea{user-select:text;-webkit-user-select:text}
     button{cursor:pointer}
-    .shell{width:min(100%,1120px);margin:auto;padding:20px}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;padding:2px 3px}
-    .brand strong{display:block;font-size:18px;letter-spacing:-.4px}
-    .brand span{display:block;color:var(--soft);font-size:11px;margin-top:3px}
+    .shell{width:min(100%,1120px);margin:auto;padding:14px 20px 20px}
+    .top{display:none}
     .tabs{
       position:sticky;top:10px;z-index:10;display:grid;grid-template-columns:repeat(3,1fr);
       gap:8px;padding:7px;border:1px solid var(--line);border-radius:18px;
@@ -70,38 +70,47 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       transform:translate(-50%,-50%);box-shadow:0 3px 15px rgba(0,0,0,.78);pointer-events:none
     }
     .preview{
-      min-height:116px;border:1px solid rgba(255,255,255,.15);border-radius:20px;margin-top:15px;
-      display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;padding:16px 16px 15px;
-      background:linear-gradient(105deg,rgba(0,0,0,.30),rgba(255,255,255,.10)),var(--selected,#ff3b30);
-      box-shadow:inset 0 0 42px rgba(255,255,255,.08),0 16px 38px rgba(0,0,0,.20)
+      position:relative;overflow:hidden;min-height:156px;border:1px solid rgba(255,255,255,.12);border-radius:24px;margin-top:15px;
+      display:block;padding:18px 18px 16px;
+      background:
+        linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.05) 32%,rgba(0,0,0,.10) 33%,rgba(0,0,0,.20)),
+        var(--selected,#ff3b30);
+      box-shadow:inset 0 0 44px rgba(255,255,255,.08),0 16px 38px rgba(0,0,0,.20)
     }
-    .preview-main{min-width:0}
-    .preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-    .preview strong,.brightness-value{font-size:13px;text-shadow:0 2px 8px rgba(0,0,0,.55)}
-    .brightness-value{font-weight:750;color:rgba(255,255,255,.92)}
-    .brightness-row{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:10px}
-    .brightness-icon{font-size:17px;line-height:1;color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))}
-    .power{
-      width:46px;height:46px;border:1px solid rgba(255,255,255,.28);border-radius:50%;
-      background:rgba(0,0,0,.26);color:#fff;font-size:19px;box-shadow:0 7px 18px rgba(0,0,0,.22)
+    .preview-main{min-width:0;display:flex;flex-direction:column;gap:22px}
+    .preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:0}
+    .preview-title{display:flex;flex-direction:column;gap:4px}
+    .preview strong{font-size:18px;font-weight:760;letter-spacing:-.4px;text-shadow:0 2px 10px rgba(0,0,0,.35)}
+    .preview small{color:rgba(255,255,255,.78);font-size:12px;text-shadow:0 2px 10px rgba(0,0,0,.28)}
+    .brightness-value{display:none}
+    .brightness-row{display:block;padding-top:18px}
+    .power-switch{
+      position:relative;flex:0 0 auto;width:66px;height:36px;border:0;border-radius:999px;padding:4px;
+      background:rgba(0,0,0,.16);box-shadow:inset 0 1px 3px rgba(0,0,0,.24),0 1px 0 rgba(255,255,255,.18)
     }
-    .power:active{transform:scale(.96)}
+    .power-switch:before{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+    .power-switch:after{
+      content:"";display:block;width:28px;height:28px;border-radius:50%;background:#fff;
+      box-shadow:0 3px 12px rgba(0,0,0,.30);transition:transform .18s ease
+    }
+    .power-switch.off:after{transform:translateX(0)}
+    .power-switch.on:after{transform:translateX(30px)}
     .control{margin-top:21px}
     .control-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;font-size:13px}
     .control-head span:last-child{color:var(--muted)}
     input[type=range]{width:100%;accent-color:#fff}
     #brightness{
-      --level:70%;appearance:none;-webkit-appearance:none;height:13px;margin:0;border:0;border-radius:999px;outline:0;
-      background:linear-gradient(90deg,rgba(255,255,255,.94) 0 var(--level),rgba(255,255,255,.30) var(--level) 100%);
+      --level:70%;appearance:none;-webkit-appearance:none;height:18px;margin:0;border:0;border-radius:999px;outline:0;
+      background:linear-gradient(90deg,rgba(255,255,255,.98) 0 var(--level),rgba(255,255,255,.38) var(--level) 100%);
       box-shadow:inset 0 1px 3px rgba(0,0,0,.24),0 1px 0 rgba(255,255,255,.20)
     }
     #brightness::-webkit-slider-thumb{
-      appearance:none;-webkit-appearance:none;width:27px;height:27px;border:0;border-radius:50%;background:#fff;
-      box-shadow:0 3px 12px rgba(0,0,0,.38),0 0 0 1px rgba(0,0,0,.06)
+      appearance:none;-webkit-appearance:none;width:34px;height:34px;border:0;border-radius:50%;background:#fff;
+      box-shadow:0 4px 14px rgba(0,0,0,.32),0 0 0 1px rgba(0,0,0,.06)
     }
     #brightness::-moz-range-thumb{
-      width:27px;height:27px;border:0;border-radius:50%;background:#fff;
-      box-shadow:0 3px 12px rgba(0,0,0,.38),0 0 0 1px rgba(0,0,0,.06)
+      width:34px;height:34px;border:0;border-radius:50%;background:#fff;
+      box-shadow:0 4px 14px rgba(0,0,0,.32),0 0 0 1px rgba(0,0,0,.06)
     }
     .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:20px}
     .swatch{
@@ -160,14 +169,12 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
     .toast.show{opacity:1;transform:translate(-50%,0)}
     @media(max-width:820px){.grid{grid-template-columns:1fr}.shell{padding:12px}.card{padding:18px}.effects{grid-template-columns:1fr 1fr}}
-    @media(max-width:480px){.effects{grid-template-columns:1fr}.field{width:145px}.brand strong{font-size:16px}}
+    @media(max-width:480px){.effects{grid-template-columns:1fr}.field{width:145px}}
   </style>
 </head>
 <body>
 <div class="shell">
-  <header class="top">
-    <div class="brand"><strong id="deviceTitle">Prism</strong><span>RGB Light Controller</span></div>
-  </header>
+  <header class="top"></header>
 
   <nav class="tabs">
     <button class="tab active" data-page="control">LIGHT</button>
@@ -188,15 +195,17 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="preview" id="preview">
             <div class="preview-main">
               <div class="preview-head">
-                <strong id="colorLabel">Selected color</strong>
-                <span class="brightness-value" id="brightnessValue">70%</span>
+                <div class="preview-title">
+                  <strong id="colorLabel">Selected Color</strong>
+                  <small id="colorSubtitle">Static output</small>
+                </div>
+                <button class="power-switch on" id="powerBtn" aria-label="Toggle power"></button>
               </div>
               <div class="brightness-row">
-                <span class="brightness-icon" aria-hidden="true">☀</span>
                 <input id="brightness" type="range" min="1" max="100" value="70" aria-label="Brightness">
+                <span class="brightness-value" id="brightnessValue">70%</span>
               </div>
             </div>
-            <button class="power" id="powerBtn" aria-label="Toggle power">⏻</button>
           </div>
           <div class="quick" id="quickColors"></div>
         </article>
@@ -446,26 +455,14 @@ hueWheelImage.src=HUE_WHEEL_SRC;
 function rgbToWheelPosition(r,g,b){
   const key=r+","+g+","+b;
   if(wheelPositionCache.key===key)return wheelPositionCache;
-  if(!hueWheelReady||!wheelLookup.length)return {key,x:.5,y:.5};
-
-  const target=rgbToOklab([r,g,b]);
-  let best=null,bestError=Infinity;
-
-  for(const sample of wheelLookup){
-    const dL=target[0]-sample.lab[0];
-    const da=target[1]-sample.lab[1];
-    const db=target[2]-sample.lab[2];
-    const error=dL*dL*.72+da*da*1.18+db*db*1.18;
-
-    if(error<bestError){
-      bestError=error;
-      best=sample
-    }
-  }
-
-  wheelPositionCache=best
-    ?{key,x:best.x,y:best.y}
-    :{key,x:.5,y:.5};
+  const [h,s]=rgbToHsv(r,g,b);
+  const wheelAngle=((h-30)+360)%360;
+  const rad=wheelAngle*Math.PI/180;
+  wheelPositionCache={
+    key,
+    x:.5+.5*s*Math.sin(rad),
+    y:.5-.5*s*Math.cos(rad)
+  };
   return wheelPositionCache
 }
 
@@ -539,15 +536,14 @@ function pick(e){
 
   const nx=(x+half)/box.width;
   const ny=(y+half)/box.height;
-  const px=Math.max(0,Math.min(c.width-1,Math.round(nx*(c.width-1))));
-  const py=Math.max(0,Math.min(c.height-1,Math.round(ny*(c.height-1))));
-  const pixel=c.getContext("2d",{willReadFrequently:true}).getImageData(px,py,1,1).data;
+  const sat=Math.max(0,Math.min(1,Math.hypot(x,y)/maxRadius));
+  const angle=(Math.atan2(y,x)*180/Math.PI+450)%360;
+  const hue=(angle+30)%360;
+  const [r,g,b]=hsvToRgb(hue,sat,1);
 
-  if(pixel[3]<128)return;
-
-  state.r=pixel[0];
-  state.g=pixel[1];
-  state.b=pixel[2];
+  state.r=r;
+  state.g=g;
+  state.b=b;
   wheelPositionCache={
     key:state.r+","+state.g+","+state.b,
     x:nx,
@@ -570,13 +566,15 @@ function render(){
   $("#preview").style.setProperty("--selected",c);$("#rgbValue").textContent=`${state.r}, ${state.g}, ${state.b}`;
   if(document.activeElement!==$("#brightness"))$("#brightness").value=state.brightness;
   $("#brightness").style.setProperty("--level",state.brightness+"%");
-  $("#brightnessValue").textContent=state.brightness+"%";
+  const bv=$("#brightnessValue"); if(bv)bv.textContent=state.brightness+"%";
   if(document.activeElement!==$("#speed"))$("#speed").value=state.speed;
   $("#speedValue").textContent=state.speed+"%";
   if(document.activeElement!==$("#intensity"))$("#intensity").value=state.intensity;
   $("#intensityValue").textContent=state.intensity+"%";
   $("#currentMode").textContent=state.effect;
-  $("#powerBtn").style.opacity=state.power?1:.45;
+  $("#colorSubtitle").textContent=state.power?"Tap the slider to adjust brightness":"Output off";
+  $("#powerBtn").classList.toggle("on",!!state.power);
+  $("#powerBtn").classList.toggle("off",!state.power);
   $$(".effect").forEach(x=>x.classList.toggle("active",x.dataset.effect===state.effect));
   setWheelFromRgb()
 }
@@ -619,7 +617,7 @@ async function load(full=false){
   try{
     const d=await api("/api/state");Object.assign(state,d.state);
     if(full||!settingsLoaded){
-      $("#deviceName").value=d.settings.deviceName;$("#deviceTitle").textContent=d.settings.deviceName;
+      $("#deviceName").value=d.settings.deviceName;const titleEl=$("#deviceTitle");if(titleEl)titleEl.textContent=d.settings.deviceName;
       $("#ledCount").value=d.settings.ledCount;$("#colorOrder").value=d.settings.colorOrder;
       $("#maxBrightness").value=d.settings.maxBrightness;$("#defaultFade").value=d.settings.defaultFade;
       $("#mdnsName").value=d.settings.mdnsName;
