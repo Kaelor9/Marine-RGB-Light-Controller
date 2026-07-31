@@ -55,7 +55,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
     .title{margin:0;font-size:23px;letter-spacing:-.7px}
     .desc{margin:7px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
-    .wheel-wrap{display:grid;place-items:center;padding:24px 0 10px}
+    .wheel-wrap{display:grid;place-items:center;padding:4px 0 12px}
     .wheel-shell{position:relative;width:min(74vw,330px);aspect-ratio:1}
     #hueWheel{
       display:block;width:100%;height:100%;border-radius:50%;touch-action:none;
@@ -70,19 +70,39 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       transform:translate(-50%,-50%);box-shadow:0 3px 15px rgba(0,0,0,.78);pointer-events:none
     }
     .preview{
-      height:68px;border:1px solid var(--line);border-radius:18px;margin-top:15px;
-      display:flex;align-items:center;justify-content:space-between;padding:0 18px;
-      background:var(--selected,#ff3b30);box-shadow:inset 0 0 40px rgba(255,255,255,.08)
+      min-height:116px;border:1px solid rgba(255,255,255,.15);border-radius:20px;margin-top:15px;
+      display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;padding:16px 16px 15px;
+      background:linear-gradient(105deg,rgba(0,0,0,.30),rgba(255,255,255,.10)),var(--selected,#ff3b30);
+      box-shadow:inset 0 0 42px rgba(255,255,255,.08),0 16px 38px rgba(0,0,0,.20)
     }
-    .preview strong{font-size:14px;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+    .preview-main{min-width:0}
+    .preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .preview strong,.brightness-value{font-size:13px;text-shadow:0 2px 8px rgba(0,0,0,.55)}
+    .brightness-value{font-weight:750;color:rgba(255,255,255,.92)}
+    .brightness-row{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:10px}
+    .brightness-icon{font-size:17px;line-height:1;color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))}
     .power{
-      width:44px;height:44px;border:1px solid rgba(255,255,255,.22);border-radius:14px;
-      background:rgba(0,0,0,.22);color:#fff;font-size:19px
+      width:46px;height:46px;border:1px solid rgba(255,255,255,.28);border-radius:50%;
+      background:rgba(0,0,0,.26);color:#fff;font-size:19px;box-shadow:0 7px 18px rgba(0,0,0,.22)
     }
+    .power:active{transform:scale(.96)}
     .control{margin-top:21px}
     .control-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;font-size:13px}
     .control-head span:last-child{color:var(--muted)}
     input[type=range]{width:100%;accent-color:#fff}
+    #brightness{
+      --level:70%;appearance:none;-webkit-appearance:none;height:13px;margin:0;border:0;border-radius:999px;outline:0;
+      background:linear-gradient(90deg,rgba(255,255,255,.94) 0 var(--level),rgba(255,255,255,.30) var(--level) 100%);
+      box-shadow:inset 0 1px 3px rgba(0,0,0,.24),0 1px 0 rgba(255,255,255,.20)
+    }
+    #brightness::-webkit-slider-thumb{
+      appearance:none;-webkit-appearance:none;width:27px;height:27px;border:0;border-radius:50%;background:#fff;
+      box-shadow:0 3px 12px rgba(0,0,0,.38),0 0 0 1px rgba(0,0,0,.06)
+    }
+    #brightness::-moz-range-thumb{
+      width:27px;height:27px;border:0;border-radius:50%;background:#fff;
+      box-shadow:0 3px 12px rgba(0,0,0,.38),0 0 0 1px rgba(0,0,0,.06)
+    }
     .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:20px}
     .swatch{
       position:relative;aspect-ratio:1;border:2px solid transparent;border-radius:14px;background:var(--c);
@@ -159,8 +179,6 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     <section class="page active" id="control">
       <div class="grid">
         <article class="card">
-          <h1 class="title">Color</h1>
-          <p class="desc">Choose a color for the complete LED strip.</p>
           <div class="wheel-wrap">
             <div class="wheel-shell">
               <canvas id="hueWheel" width="660" height="660"></canvas>
@@ -168,7 +186,16 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
             </div>
           </div>
           <div class="preview" id="preview">
-            <strong id="colorLabel">Selected color</strong>
+            <div class="preview-main">
+              <div class="preview-head">
+                <strong id="colorLabel">Selected color</strong>
+                <span class="brightness-value" id="brightnessValue">70%</span>
+              </div>
+              <div class="brightness-row">
+                <span class="brightness-icon" aria-hidden="true">☀</span>
+                <input id="brightness" type="range" min="1" max="100" value="70" aria-label="Brightness">
+              </div>
+            </div>
             <button class="power" id="powerBtn" aria-label="Toggle power">⏻</button>
           </div>
           <div class="quick" id="quickColors"></div>
@@ -177,11 +204,6 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
         <article class="card">
           <h2 class="title">Light output</h2>
           <p class="desc">Color and brightness are applied immediately. Fade timing is configured once under Advanced Settings.</p>
-
-          <div class="control">
-            <div class="control-head"><span>Brightness</span><span id="brightnessValue">70%</span></div>
-            <input id="brightness" type="range" min="1" max="100" value="70">
-          </div>
 
           <details>
             <summary>Current output</summary>
@@ -263,6 +285,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 
           <div class="form-section">
             <div class="section-name">Isolated input 1</div>
+            <div class="row"><label><strong>Enabled</strong><span>Uses the fixed GPIO38 input.</span></label><button class="toggle" id="input1Enabled"></button></div>
             <div class="row"><label><strong>Action</strong><span id="input1Help">Select an action to see how short and long presses behave.</span></label>
               <select class="field input-action" id="input1Action">
                 <option value="colors">Cycle preset colors</option>
@@ -281,7 +304,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 
           <div class="form-section">
             <div class="section-name">Isolated input 2</div>
-            <div class="row"><label><strong>Enabled</strong><span>Requires the correct GPIO below.</span></label><button class="toggle" id="input2Enabled"></button></div>
+            <div class="row"><label><strong>Enabled</strong><span>Uses the fixed GPIO39 input.</span></label><button class="toggle" id="input2Enabled"></button></div>
             <div class="row"><label><strong>Action</strong><span id="input2Help">Select an action to see how short and long presses behave.</span></label>
               <select class="field input-action" id="input2Action">
                 <option value="effects">Next effect</option>
@@ -473,11 +496,28 @@ function drawWheel(){
   ctx.stroke()
 }
 
+function positionPicker(nx,ny){
+  const box=$(".wheel-shell"),p=$("#picker");
+  const half=box.clientWidth/2;
+  const pickerRadius=Math.max(p.offsetWidth,p.offsetHeight)/2+2;
+  const maxRadius=Math.max(0,half-pickerRadius);
+  let x=nx*box.clientWidth-half;
+  let y=ny*box.clientHeight-half;
+  const distance=Math.hypot(x,y);
+
+  if(distance>maxRadius){
+    const scale=maxRadius/distance;
+    x*=scale;
+    y*=scale
+  }
+
+  p.style.left=(half+x)+"px";
+  p.style.top=(half+y)+"px"
+}
+
 function setWheelFromRgb(){
   const pos=rgbToWheelPosition(state.r,state.g,state.b);
-  const box=$(".wheel-shell"),p=$("#picker");
-  p.style.left=(pos.x*box.clientWidth)+"px";
-  p.style.top=(pos.y*box.clientHeight)+"px"
+  positionPicker(pos.x,pos.y)
 }
 
 function pick(e){
@@ -529,6 +569,7 @@ function render(){
   const c=`rgb(${state.r},${state.g},${state.b})`;
   $("#preview").style.setProperty("--selected",c);$("#rgbValue").textContent=`${state.r}, ${state.g}, ${state.b}`;
   if(document.activeElement!==$("#brightness"))$("#brightness").value=state.brightness;
+  $("#brightness").style.setProperty("--level",state.brightness+"%");
   $("#brightnessValue").textContent=state.brightness+"%";
   if(document.activeElement!==$("#speed"))$("#speed").value=state.speed;
   $("#speedValue").textContent=state.speed+"%";
@@ -553,9 +594,13 @@ $$(".tab").forEach(b=>b.onclick=()=>{
   $$(".tab").forEach(x=>x.classList.remove("active"));$$(".page").forEach(x=>x.classList.remove("active"));
   b.classList.add("active");$("#"+b.dataset.page).classList.add("active")
 });
-$("#hueWheel").addEventListener("pointerdown",e=>{dragging=true;$("#hueWheel").setPointerCapture(e.pointerId);pick(e)});
-$("#hueWheel").addEventListener("pointermove",e=>dragging&&pick(e));
-$("#hueWheel").addEventListener("pointerup",()=>dragging=false);
+const wheelCanvas=$("#hueWheel");
+const stopWheelDrag=()=>dragging=false;
+wheelCanvas.addEventListener("pointerdown",e=>{dragging=true;wheelCanvas.setPointerCapture(e.pointerId);pick(e)});
+wheelCanvas.addEventListener("pointermove",e=>dragging&&pick(e));
+wheelCanvas.addEventListener("pointerup",stopWheelDrag);
+wheelCanvas.addEventListener("pointercancel",stopWheelDrag);
+wheelCanvas.addEventListener("lostpointercapture",stopWheelDrag);
 $("#brightness").oninput=e=>{state.brightness=+e.target.value;render();scheduleControl("/api/brightness",{value:state.brightness})};
 $("#speed").oninput=e=>{state.speed=+e.target.value;render();scheduleControl("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity})};
 $("#intensity").oninput=e=>{state.intensity=+e.target.value;render();scheduleControl("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity})};
@@ -578,8 +623,8 @@ async function load(full=false){
       $("#ledCount").value=d.settings.ledCount;$("#colorOrder").value=d.settings.colorOrder;
       $("#maxBrightness").value=d.settings.maxBrightness;$("#defaultFade").value=d.settings.defaultFade;
       $("#mdnsName").value=d.settings.mdnsName;
-      $("#input1Pin").value=d.settings.input1Pin;$("#input2Pin").value=d.settings.input2Pin;
       $("#input1Action").value=d.settings.input1Action;$("#input2Action").value=d.settings.input2Action;
+      toggle($("#input1Enabled"),d.settings.input1Enabled);
       toggle($("#input2Enabled"),d.settings.input2Enabled);
       toggle($("#restoreState"),d.settings.restoreState);toggle($("#smoothTransitions"),d.settings.smoothTransitions);
       toggle($("#warmCompensation"),d.settings.warmCompensation);
@@ -594,10 +639,11 @@ $("#saveSettings").onclick=async()=>{
     maxBrightness:$("#maxBrightness").value,restoreState:$("#restoreState").dataset.value||0,
     smoothTransitions:$("#smoothTransitions").dataset.value||0,defaultFade:$("#defaultFade").value,
     warmCompensation:$("#warmCompensation").dataset.value||0,
-    mdnsName:$("#mdnsName").value,input1Pin:$("#input1Pin").value,input2Pin:$("#input2Pin").value,
-    input2Enabled:$("#input2Enabled").dataset.value||0,input1Action:$("#input1Action").value,input2Action:$("#input2Action").value
+    mdnsName:$("#mdnsName").value,
+    input1Enabled:$("#input1Enabled").dataset.value||0,input2Enabled:$("#input2Enabled").dataset.value||0,
+    input1Action:$("#input1Action").value,input2Action:$("#input2Action").value
   });
-  toast("Settings saved — restart if a GPIO or color order changed");setTimeout(()=>load(true),300)
+  toast("Settings saved — restart after changing LED count, color order or mDNS name");setTimeout(()=>load(true),300)
 };
 $("#restartBtn").onclick=()=>confirm("Restart the controller?")&&api("/api/restart",{}).then(()=>toast("Restarting"));
 $("#wifiResetBtn").onclick=()=>confirm("Erase saved Wi-Fi and restart?")&&api("/api/reset-wifi",{});

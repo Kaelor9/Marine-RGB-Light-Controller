@@ -67,6 +67,7 @@ struct DebouncedInput {
 };
 
 CRGB leds[MAX_LED_COUNT];
+uint16_t activeLedCount = DEFAULT_LED_COUNT;
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 Preferences prefs;
@@ -221,8 +222,15 @@ void loadPreferences() {
 
   settings.input1Enabled = prefs.getBool("in1en", true);
   settings.input2Enabled = prefs.getBool("in2en", true);
-  settings.input1Action = static_cast<InputAction>(prefs.getUChar("in1", static_cast<uint8_t>(InputAction::CycleColors)));
-  settings.input2Action = static_cast<InputAction>(prefs.getUChar("in2", static_cast<uint8_t>(InputAction::NextEffect)));
+
+  const uint8_t input1Raw = prefs.getUChar("in1", static_cast<uint8_t>(InputAction::CycleColors));
+  const uint8_t input2Raw = prefs.getUChar("in2", static_cast<uint8_t>(InputAction::NextEffect));
+  settings.input1Action = input1Raw <= static_cast<uint8_t>(InputAction::BlueScene)
+    ? static_cast<InputAction>(input1Raw)
+    : InputAction::CycleColors;
+  settings.input2Action = input2Raw <= static_cast<uint8_t>(InputAction::BlueScene)
+    ? static_cast<InputAction>(input2Raw)
+    : InputAction::NextEffect;
 
   if (settings.restoreState) {
     state.r = prefs.getUChar("r", 255);
@@ -232,7 +240,10 @@ void loadPreferences() {
     state.speed = constrain(prefs.getUChar("speed", 50), 1, 100);
     state.intensity = constrain(prefs.getUChar("intens", 65), 1, 100);
     state.power = prefs.getBool("power", true);
-    state.effect = static_cast<Effect>(prefs.getUChar("effect", static_cast<uint8_t>(Effect::Static)));
+    const uint8_t effectRaw = prefs.getUChar("effect", static_cast<uint8_t>(Effect::Static));
+    state.effect = effectRaw <= static_cast<uint8_t>(Effect::Off)
+      ? static_cast<Effect>(effectRaw)
+      : Effect::Static;
   }
 
   prefs.end();
@@ -269,18 +280,23 @@ void savePreferences() {
   stateDirty = false;
 }
 
-void configureInputs() {
-  input1.pin = settings.input1Enabled ? DEFAULT_ISO_INPUT_1_PIN : -1;
-  input2.pin = settings.input2Enabled ? DEFAULT_ISO_INPUT_2_PIN : -1;
+void configureInput(DebouncedInput& input, bool enabled, int8_t pin) {
+  input = DebouncedInput{};
+  input.pin = enabled ? pin : -1;
+  if (input.pin >= 0) pinMode(input.pin, INPUT);
+}
 
-  if (input1.pin >= 0) pinMode(input1.pin, INPUT);
-  if (input2.pin >= 0) pinMode(input2.pin, INPUT);
+void configureInputs() {
+  configureInput(input1, settings.input1Enabled, DEFAULT_ISO_INPUT_1_PIN);
+  configureInput(input2, settings.input2Enabled, DEFAULT_ISO_INPUT_2_PIN);
 }
 
 void configureLedController() {
-  if (settings.colorOrder == "RGB") FastLED.addLeds<WS2811, LED_DATA_PIN_1, RGB>(leds, MAX_LED_COUNT);
-  else if (settings.colorOrder == "GRB") FastLED.addLeds<WS2811, LED_DATA_PIN_1, GRB>(leds, MAX_LED_COUNT);
-  else FastLED.addLeds<WS2811, LED_DATA_PIN_1, BRG>(leds, MAX_LED_COUNT);
+  activeLedCount = settings.ledCount;
+
+  if (settings.colorOrder == "RGB") FastLED.addLeds<WS2811, LED_DATA_PIN_1, RGB>(leds, activeLedCount);
+  else if (settings.colorOrder == "GRB") FastLED.addLeds<WS2811, LED_DATA_PIN_1, GRB>(leds, activeLedCount);
+  else FastLED.addLeds<WS2811, LED_DATA_PIN_1, BRG>(leds, activeLedCount);
 
   FastLED.setDither(true);
   FastLED.setCorrection(TypicalLEDStrip);
@@ -289,14 +305,23 @@ void configureLedController() {
 }
 
 uint16_t effectFrameInterval() {
+  // Static colour fades should remain smooth regardless of the effect-speed slider.
+  if (state.effect == Effect::Static) return 16;  // Approximately 60 FPS.
   return static_cast<uint16_t>(map(state.speed, 1, 100, 80, 10));
 }
 
 CRGB applyWarmCompensation(CRGB color) {
   if (!settings.warmCompensation || state.effect != Effect::Static) return color;
 
-  // Strongest correction at high brightness. This reduces green and blue
-  // slightly so the selected warm-white preset remains visually warm.
+  // Only compensate the calibrated warm-white area. Applying this to every
+  // static colour would shift colours selected from the hue wheel.
+  const bool warmWhiteSelected =
+    state.r >= 235 &&
+    state.g >= 100 && state.g <= 156 &&
+    state.b >= 10 && state.b <= 70;
+
+  if (!warmWhiteSelected) return color;
+
   const uint8_t strength = map(state.brightness, 1, 100, 0, 42);
   color.g = qsub8(color.g, scale8(color.g, strength));
   color.b = qsub8(color.b, scale8(color.b, min<uint8_t>(70, strength + 18)));
@@ -316,17 +341,17 @@ void renderStatic() {
     displayedColor = CRGB(state.r, state.g, state.b);
   }
 
-  fill_solid(leds, settings.ledCount, applyWarmCompensation(displayedColor));
+  fill_solid(leds, activeLedCount, applyWarmCompensation(displayedColor));
 }
 
 void renderRainbow() {
-  const uint8_t delta = settings.ledCount > 0 ? static_cast<uint8_t>(255 / settings.ledCount) : 1;
-  fill_rainbow(leds, settings.ledCount, rainbowOffset, delta);
+  const uint8_t delta = max<uint8_t>(1, static_cast<uint8_t>(255 / activeLedCount));
+  fill_rainbow(leds, activeLedCount, rainbowOffset, delta);
   rainbowOffset += map(state.speed, 1, 100, 1, 5);
 }
 
 void renderColorFade() {
-  fill_solid(leds, settings.ledCount, CHSV(fadeHue, 255, 255));
+  fill_solid(leds, activeLedCount, CHSV(fadeHue, 255, 255));
   fadeHue += map(state.speed, 1, 100, 1, 4);
 }
 
@@ -336,19 +361,19 @@ void renderDisco() {
     lastDiscoChange = millis();
     discoColor = CHSV(random8(), 255, 255);
   }
-  fill_solid(leds, settings.ledCount, discoColor);
+  fill_solid(leds, activeLedCount, discoColor);
 }
 
 void renderSparkle() {
   CRGB base(state.r, state.g, state.b);
   base.nscale8_video(map(state.intensity, 1, 100, 35, 145));
-  fill_solid(leds, settings.ledCount, base);
+  fill_solid(leds, activeLedCount, base);
 
-  const uint8_t maxSparkles = settings.ledCount >= 10 ? settings.ledCount / 5 : 2;
+  const uint8_t maxSparkles = activeLedCount >= 10 ? activeLedCount / 5 : 2;
   const uint8_t sparkles = map(state.intensity, 1, 100, 1, maxSparkles);
   for (uint8_t i = 0; i < sparkles; ++i) {
     if (random8() < map(state.speed, 1, 100, 35, 180)) {
-      leds[random16(settings.ledCount)] = blend(CRGB(state.r, state.g, state.b), CRGB::White, 190);
+      leds[random16(activeLedCount)] = blend(CRGB(state.r, state.g, state.b), CRGB::White, 190);
     }
   }
 }
@@ -359,7 +384,9 @@ void updateLeds() {
   lastEffectFrame = now;
 
   if (!state.power || state.effect == Effect::Off) {
-    fill_solid(leds, settings.ledCount, CRGB::Black);
+    transitionActive = false;
+    displayedColor = CRGB::Black;
+    fill_solid(leds, activeLedCount, CRGB::Black);
   } else {
     switch (state.effect) {
       case Effect::Static: renderStatic(); break;
@@ -367,7 +394,7 @@ void updateLeds() {
       case Effect::ColorFade: renderColorFade(); break;
       case Effect::Disco: renderDisco(); break;
       case Effect::Sparkle: renderSparkle(); break;
-      case Effect::Off: fill_solid(leds, settings.ledCount, CRGB::Black); break;
+      case Effect::Off: fill_solid(leds, activeLedCount, CRGB::Black); break;
     }
   }
 
@@ -610,6 +637,7 @@ void setupRoutes() {
     settings.input1Action = parseInputAction(server.arg("input1Action"));
     settings.input2Action = parseInputAction(server.arg("input2Action"));
 
+    configureInputs();
     markStateChanged();
     savePreferences();
     sendOk();
