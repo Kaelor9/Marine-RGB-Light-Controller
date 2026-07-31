@@ -26,7 +26,6 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     html{min-height:100%;background:#0b1018}
     body{
-      --ambient-selected:rgba(40,115,255,.045);
       margin:0;min-height:100vh;min-height:100dvh;color:var(--text);
       position:relative;isolation:isolate;overflow-x:hidden;
       font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -44,9 +43,8 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       filter:blur(34px);transform:scale(1.04)
     }
     body:after{
-      content:"";position:fixed;inset:-12%;z-index:0;pointer-events:none;
-      background:radial-gradient(circle at 50% 38%,var(--ambient-selected),transparent 51%);
-      filter:blur(40px)
+      content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:linear-gradient(180deg,rgba(18,24,35,.16),rgba(9,11,16,0) 34%);
     }
     button,input,select{font:inherit}
     input,select,textarea{user-select:text;-webkit-user-select:text}
@@ -73,14 +71,48 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),rgba(16,21,30,.86);
       box-shadow:0 26px 80px rgba(0,0,0,.28);padding:22px
     }
+    #control .grid{align-items:start}
+    #control .card{
+      border:0;border-radius:0;background:transparent;
+      box-shadow:none;padding:0;overflow:visible
+    }
+    #control .card:last-child{padding-top:4px}
+
     .title{margin:0;font-size:23px;letter-spacing:-.7px}
     .desc{margin:7px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
-    .wheel-wrap{display:grid;place-items:center;padding:4px 0 12px}
+    .wheel-wrap{
+      position:relative;display:grid;place-items:center;padding:8px 0 16px;
+      isolation:isolate;overflow:visible
+    }
+    .wheel-wrap:before{
+      content:"";position:absolute;width:min(96vw,470px);aspect-ratio:1;z-index:-2;
+      border-radius:50%;pointer-events:none;
+      background:conic-gradient(
+        from 0deg,
+        rgba(255,45,35,.38),
+        rgba(255,215,30,.28),
+        rgba(35,235,75,.27),
+        rgba(10,210,225,.28),
+        rgba(45,85,255,.31),
+        rgba(220,35,235,.32),
+        rgba(255,45,35,.38)
+      );
+      filter:blur(54px);opacity:.29;transform:scale(1.03)
+    }
     .wheel-shell{position:relative;width:min(74vw,330px);aspect-ratio:1;isolation:isolate}
     .wheel-shell:before{
-      content:"";position:absolute;inset:-5%;z-index:-1;border-radius:50%;pointer-events:none;
-      background:conic-gradient(from -10deg,rgba(255,52,40,.13),rgba(255,193,38,.10),rgba(35,234,91,.10),rgba(10,201,227,.11),rgba(55,99,255,.12),rgba(203,41,236,.12),rgba(255,52,40,.13));
-      filter:blur(24px);opacity:.38
+      content:"";position:absolute;inset:-10%;z-index:-1;border-radius:50%;pointer-events:none;
+      background:conic-gradient(
+        from 0deg,
+        rgba(255,45,35,.24),
+        rgba(255,215,30,.18),
+        rgba(35,235,75,.18),
+        rgba(10,210,225,.19),
+        rgba(45,85,255,.21),
+        rgba(220,35,235,.21),
+        rgba(255,45,35,.24)
+      );
+      filter:blur(31px);opacity:.34
     }
     #hueWheel{
       display:block;width:100%;height:100%;border:0;border-radius:50%;touch-action:none;
@@ -225,7 +257,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
                 calc(env(safe-area-inset-bottom,0px) + 16px)
                 max(12px,env(safe-area-inset-left,0px))
       }
-      .card{padding:18px}.effects{grid-template-columns:1fr 1fr}
+      .card{padding:18px}#control .card{padding:0}.effects{grid-template-columns:1fr 1fr}
     }
     @media(max-width:480px){.effects{grid-template-columns:1fr}.field{width:145px}}
   </style>
@@ -393,7 +425,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="form-section">
             <div class="section-name">Version information</div>
             <div class="row"><label><strong>Firmware</strong><span>Software currently installed on the controller.</span></label><span class="version-value" id="firmwareVersion">—</span></div>
-            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.9</span></div>
+            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.10</span></div>
           </div>
 
           <details>
@@ -415,6 +447,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let state={r:255,g:128,b:40,power:true,brightness:70,effect:"static",speed:50,intensity:65};
+let lastStaticRgb={r:state.r,g:state.g,b:state.b};
 let dragging=false, colorTimer, controlTimer, settingsLoaded=false;
 
 const actionHelp={
@@ -516,7 +549,7 @@ function positionPicker(nx,ny){
 }
 
 function setWheelFromRgb(){
-  const pos=rgbToWheelPosition(state.r,state.g,state.b);
+  const pos=rgbToWheelPosition(lastStaticRgb.r,lastStaticRgb.g,lastStaticRgb.b);
   positionPicker(pos.x,pos.y)
 }
 
@@ -547,6 +580,7 @@ function pick(e){
   state.r=r;
   state.g=g;
   state.b=b;
+  lastStaticRgb={r,g,b};
   wheelPositionCache={
     key:state.r+","+state.g+","+state.b,
     x:nx,
@@ -571,12 +605,6 @@ function render(){
   const tile=`rgb(${Math.round(state.r*visualFactor)},${Math.round(state.g*visualFactor)},${Math.round(state.b*visualFactor)})`;
   $("#preview").style.setProperty("--selected",c);
   $("#preview").style.setProperty("--tile",tile);
-  document.body.style.setProperty("--ambient-selected",`rgba(${state.r},${state.g},${state.b},.10)`);
-  const themeMeta=$("#themeColor");
-  if(themeMeta){
-    const tr=Math.round(9+state.r*.055),tg=Math.round(12+state.g*.045),tb=Math.round(18+state.b*.055);
-    themeMeta.setAttribute("content",`rgb(${tr},${tg},${tb})`)
-  }
   $("#rgbValue").textContent=`${state.r}, ${state.g}, ${state.b}`;
   if(document.activeElement!==$("#brightness"))$("#brightness").value=state.brightness;
   const bv=$("#brightnessValue"); if(bv)bv.textContent=state.brightness+"%";
@@ -588,7 +616,10 @@ function render(){
   $("#powerBtn").classList.toggle("on",!!state.power);
   $("#powerBtn").classList.toggle("off",!state.power);
   $$(".effect").forEach(x=>x.classList.toggle("active",x.dataset.effect===state.effect));
-  setWheelFromRgb()
+  if(state.effect==="static"){
+    lastStaticRgb={r:state.r,g:state.g,b:state.b};
+    setWheelFromRgb()
+  }
 }
 const colors=[
   {rgb:[255,0,0],label:"Red"},{rgb:[0,255,0],label:"Green"},{rgb:[0,0,255],label:"Blue"},
@@ -597,7 +628,7 @@ const colors=[
 ];
 colors.forEach(({rgb,label})=>{
   const b=document.createElement("button");b.className="swatch";b.style.setProperty("--c",`rgb(${rgb})`);b.dataset.label=label;b.title=label;
-  b.onclick=()=>{[state.r,state.g,state.b]=rgb;state.power=true;state.effect="static";render();scheduleColor()};
+  b.onclick=()=>{[state.r,state.g,state.b]=rgb;lastStaticRgb={r:rgb[0],g:rgb[1],b:rgb[2]};state.power=true;state.effect="static";render();scheduleColor()};
   $("#quickColors").appendChild(b)
 });
 $$(".tab").forEach(b=>b.onclick=()=>{
@@ -627,7 +658,7 @@ $$(".input-action").forEach(x=>x.onchange=updateActionHelp);
 
 async function load(full=false){
   try{
-    const d=await api("/api/state");Object.assign(state,d.state);
+    const d=await api("/api/state");Object.assign(state,d.state);if(state.effect==="static")lastStaticRgb={r:state.r,g:state.g,b:state.b};
     if(full||!settingsLoaded){
       $("#deviceName").value=d.settings.deviceName;const titleEl=$("#deviceTitle");if(titleEl)titleEl.textContent=d.settings.deviceName;
       $("#ledCount").value=d.settings.ledCount;$("#colorOrder").value=d.settings.colorOrder;
