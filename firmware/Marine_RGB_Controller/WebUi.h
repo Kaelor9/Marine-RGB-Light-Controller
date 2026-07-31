@@ -45,8 +45,8 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
     body:after{
       content:"";position:fixed;inset:-12%;z-index:0;pointer-events:none;
-      background:radial-gradient(circle at 50% 38%,var(--ambient-selected),transparent 43%);
-      filter:blur(48px)
+      background:radial-gradient(circle at 50% 38%,var(--ambient-selected),transparent 51%);
+      filter:blur(40px)
     }
     button,input,select{font:inherit}
     input,select,textarea{user-select:text;-webkit-user-select:text}
@@ -571,7 +571,7 @@ function render(){
   const tile=`rgb(${Math.round(state.r*visualFactor)},${Math.round(state.g*visualFactor)},${Math.round(state.b*visualFactor)})`;
   $("#preview").style.setProperty("--selected",c);
   $("#preview").style.setProperty("--tile",tile);
-  document.body.style.setProperty("--ambient-selected",`rgba(${state.r},${state.g},${state.b},.045)`);
+  document.body.style.setProperty("--ambient-selected",`rgba(${state.r},${state.g},${state.b},.10)`);
   const themeMeta=$("#themeColor");
   if(themeMeta){
     const tr=Math.round(9+state.r*.055),tg=Math.round(12+state.g*.045),tb=Math.round(18+state.b*.055);
