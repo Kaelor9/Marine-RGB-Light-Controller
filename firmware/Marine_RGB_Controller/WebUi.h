@@ -37,10 +37,16 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     button,input,select{font:inherit}
     input,select,textarea{user-select:text;-webkit-user-select:text}
     button{cursor:pointer}
-    .shell{width:min(100%,1120px);margin:auto;padding:14px 20px 20px}
+    .shell{
+      width:min(100%,1120px);margin:auto;
+      padding:calc(env(safe-area-inset-top,0px) + 18px)
+              max(20px,env(safe-area-inset-right,0px))
+              calc(env(safe-area-inset-bottom,0px) + 20px)
+              max(20px,env(safe-area-inset-left,0px))
+    }
     .top{display:none}
     .tabs{
-      position:sticky;top:10px;z-index:10;display:grid;grid-template-columns:repeat(3,1fr);
+      position:sticky;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:10;display:grid;grid-template-columns:repeat(3,1fr);
       gap:8px;padding:7px;border:1px solid var(--line);border-radius:18px;
       background:rgba(12,15,21,.82);backdrop-filter:blur(20px);margin-bottom:16px
     }
@@ -70,45 +76,71 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       transform:translate(-50%,-50%);box-shadow:0 3px 15px rgba(0,0,0,.78);pointer-events:none
     }
     .preview{
-      position:relative;overflow:hidden;min-height:156px;border:1px solid rgba(255,255,255,.12);border-radius:24px;margin-top:15px;
-      display:block;padding:18px 18px 16px;
+      --tile-radius:23px;
+      --slider-height:46px;
+      --tile:var(--selected,#ff3b30);
+      position:relative;overflow:hidden;height:116px;border:1px solid rgba(255,255,255,.10);
+      border-radius:var(--tile-radius);margin-top:15px;padding:0;
       background:
-        linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.05) 32%,rgba(0,0,0,.10) 33%,rgba(0,0,0,.20)),
-        var(--selected,#ff3b30);
-      box-shadow:inset 0 0 44px rgba(255,255,255,.08),0 16px 38px rgba(0,0,0,.20)
+        linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 70%),
+        var(--tile);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.10),
+        0 11px 25px rgba(0,0,0,.17)
     }
-    .preview-main{min-width:0;display:flex;flex-direction:column;gap:24px}
-    .preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:0}
-        .preview strong{font-size:18px;font-weight:760;letter-spacing:-.4px;text-shadow:0 2px 10px rgba(0,0,0,.35)}
+    .preview-main{position:relative;width:100%;height:100%}
+    .preview-head{
+      position:absolute;left:0;right:0;top:0;bottom:var(--slider-height);padding:0 18px;
+      display:flex;align-items:center;justify-content:space-between;gap:14px
+    }
+    .preview strong{
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      font-size:18px;font-weight:720;letter-spacing:-.25px;
+      text-shadow:0 2px 7px rgba(0,0,0,.18)
+    }
     .brightness-value{display:none}
-    .brightness-row{display:block;padding-top:18px}
-    .power-switch{
-      position:relative;flex:0 0 auto;width:66px;height:36px;border:0;border-radius:999px;padding:4px;
-      background:rgba(0,0,0,.16);box-shadow:inset 0 1px 3px rgba(0,0,0,.24),0 1px 0 rgba(255,255,255,.18)
+    .brightness-row{
+      position:absolute;left:0;right:0;bottom:0;height:var(--slider-height);padding:0;
+      overflow:hidden;border-radius:var(--tile-radius);
+      background:linear-gradient(90deg,var(--selected,#ff3b30) 0%,#fff 100%);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.08)
     }
-    .power-switch:before{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+    .power-switch{
+      position:relative;flex:0 0 auto;width:63px;height:36px;border:0;border-radius:999px;padding:4px;
+      background:rgba(0,0,0,.12);
+      box-shadow:inset 0 1px 3px rgba(0,0,0,.14),0 1px 0 rgba(255,255,255,.10)
+    }
+    .power-switch:before{
+      content:"";position:absolute;inset:0;border-radius:inherit;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.055)
+    }
     .power-switch:after{
       content:"";display:block;width:28px;height:28px;border-radius:50%;background:#fff;
-      box-shadow:0 3px 12px rgba(0,0,0,.30);transition:transform .18s ease
+      box-shadow:0 3px 8px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.02);
+      transition:transform .18s ease
     }
     .power-switch.off:after{transform:translateX(0)}
-    .power-switch.on:after{transform:translateX(30px)}
+    .power-switch.on:after{transform:translateX(27px)}
     .control{margin-top:21px}
     .control-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;font-size:13px}
     .control-head span:last-child{color:var(--muted)}
     input[type=range]{width:100%;accent-color:#fff}
     #brightness{
-      --level:70%;appearance:none;-webkit-appearance:none;height:18px;margin:0;border:0;border-radius:999px;outline:0;
-      background:linear-gradient(90deg,rgba(255,255,255,.98) 0 var(--level),rgba(255,255,255,.38) var(--level) 100%);
-      box-shadow:inset 0 1px 3px rgba(0,0,0,.24),0 1px 0 rgba(255,255,255,.20)
+      appearance:none;-webkit-appearance:none;position:absolute;
+      left:calc(var(--slider-height) / 2);top:0;
+      width:calc(100% - var(--slider-height));height:100%;margin:0;border:0;outline:0;
+      background:transparent
     }
+    #brightness::-webkit-slider-runnable-track{height:100%;background:transparent}
+    #brightness::-moz-range-track{height:100%;background:transparent}
     #brightness::-webkit-slider-thumb{
-      appearance:none;-webkit-appearance:none;width:34px;height:34px;border:0;border-radius:50%;background:#fff;
-      box-shadow:0 4px 14px rgba(0,0,0,.32),0 0 0 1px rgba(0,0,0,.06)
+      appearance:none;-webkit-appearance:none;width:var(--slider-height);height:var(--slider-height);
+      border:0;border-radius:50%;background:#fff;
+      box-shadow:0 3px 9px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.025)
     }
     #brightness::-moz-range-thumb{
-      width:34px;height:34px;border:0;border-radius:50%;background:#fff;
-      box-shadow:0 4px 14px rgba(0,0,0,.32),0 0 0 1px rgba(0,0,0,.06)
+      width:var(--slider-height);height:var(--slider-height);border:0;border-radius:50%;background:#fff;
+      box-shadow:0 3px 9px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.025)
     }
     .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:20px}
     .swatch{
@@ -166,7 +198,16 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       color:var(--text);font-size:12px;transition:.2s;z-index:99
     }
     .toast.show{opacity:1;transform:translate(-50%,0)}
-    @media(max-width:820px){.grid{grid-template-columns:1fr}.shell{padding:12px}.card{padding:18px}.effects{grid-template-columns:1fr 1fr}}
+    @media(max-width:820px){
+      .grid{grid-template-columns:1fr}
+      .shell{
+        padding:calc(env(safe-area-inset-top,0px) + 16px)
+                max(12px,env(safe-area-inset-right,0px))
+                calc(env(safe-area-inset-bottom,0px) + 16px)
+                max(12px,env(safe-area-inset-left,0px))
+      }
+      .card{padding:18px}.effects{grid-template-columns:1fr 1fr}
+    }
     @media(max-width:480px){.effects{grid-template-columns:1fr}.field{width:145px}}
   </style>
 </head>
@@ -193,9 +234,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="preview" id="preview">
             <div class="preview-main">
               <div class="preview-head">
-                <div class="preview-title">
-                  <strong id="colorLabel">Selected Color</strong>
-                </div>
+                <strong id="colorLabel">Selected Color</strong>
                 <button class="power-switch on" id="powerBtn" aria-label="Toggle power"></button>
               </div>
               <div class="brightness-row">
@@ -270,7 +309,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
             <div class="row"><label><strong>Color order</strong><span>Applied after restart.</span></label>
               <select class="field" id="colorOrder"><option>RGB</option><option>GRB</option><option>BRG</option></select>
             </div>
-            <div class="row"><label><strong>Warm-white compensation</strong><span>Reduces the cold shift that can appear at high brightness.</span></label><button class="toggle" id="warmCompensation"></button></div>
+            <div class="row"><label><strong>Warm-white compensation</strong><span>Warms the warm-white preset and nearby wheel colors, with the strongest correction at high brightness.</span></label><button class="toggle" id="warmCompensation"></button></div>
           </div>
 
           <div class="actions">
@@ -508,9 +547,13 @@ function scheduleControl(path,data){
 }
 function render(){
   const c=`rgb(${state.r},${state.g},${state.b})`;
-  $("#preview").style.setProperty("--selected",c);$("#rgbValue").textContent=`${state.r}, ${state.g}, ${state.b}`;
+  const visualFloor=.34;
+  const visualFactor=visualFloor+(1-visualFloor)*(state.brightness/100);
+  const tile=`rgb(${Math.round(state.r*visualFactor)},${Math.round(state.g*visualFactor)},${Math.round(state.b*visualFactor)})`;
+  $("#preview").style.setProperty("--selected",c);
+  $("#preview").style.setProperty("--tile",tile);
+  $("#rgbValue").textContent=`${state.r}, ${state.g}, ${state.b}`;
   if(document.activeElement!==$("#brightness"))$("#brightness").value=state.brightness;
-  $("#brightness").style.setProperty("--level",state.brightness+"%");
   const bv=$("#brightnessValue"); if(bv)bv.textContent=state.brightness+"%";
   if(document.activeElement!==$("#speed"))$("#speed").value=state.speed;
   $("#speedValue").textContent=state.speed+"%";

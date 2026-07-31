@@ -313,18 +313,32 @@ uint16_t effectFrameInterval() {
 CRGB applyWarmCompensation(CRGB color) {
   if (!settings.warmCompensation || state.effect != Effect::Static) return color;
 
-  // Only compensate the calibrated warm-white area. Applying this to every
-  // static colour would shift colours selected from the hue wheel.
+  // The compensation is deliberately limited to the warm-white part of the
+  // colour space. Pure red, yellow, green, blue and neutral white stay intact.
+  // This broader window also catches warm-white shades selected from the wheel,
+  // not only the exact 255,128,40 preset.
   const bool warmWhiteSelected =
-    state.r >= 235 &&
-    state.g >= 100 && state.g <= 156 &&
-    state.b >= 10 && state.b <= 70;
+    state.r >= 200 &&
+    state.g >= 90 && state.g <= 205 &&
+    state.b <= 125 &&
+    state.r > state.g &&
+    state.g > state.b &&
+    (state.r - state.g) >= 25 &&
+    (state.g - state.b) >= 25;
 
-  if (!warmWhiteSelected) return color;
+  if (!warmWhiteSelected || state.brightness <= 20) return color;
 
-  const uint8_t strength = map(state.brightness, 1, 100, 0, 42);
-  color.g = qsub8(color.g, scale8(color.g, strength));
-  color.b = qsub8(color.b, scale8(color.b, min<uint8_t>(70, strength + 18)));
+  // Compensation increases with brightness because the cold shift is most
+  // visible at high output. At 100%, green is reduced by about 31% and blue
+  // by about 53%, making the difference obvious without changing red.
+  const uint8_t amount = static_cast<uint8_t>(
+    map(state.brightness, 20, 100, 0, 255)
+  );
+  const uint8_t greenReduction = scale8(80, amount);
+  const uint8_t blueReduction = scale8(135, amount);
+
+  color.g = scale8_video(color.g, 255 - greenReduction);
+  color.b = scale8_video(color.b, 255 - blueReduction);
   return color;
 }
 
