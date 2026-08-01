@@ -25,8 +25,28 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     html{
+      width:100%;
       min-height:100%;
-      background:#111521
+      background-color:#111521;
+
+      /*
+        iOS paints the standalone status-bar/safe-area region from the
+        document root canvas. The exact same viewport-relative gradient
+        is therefore repeated here, rather than relying only on the
+        child .ambient-background layer.
+      */
+      background-image:
+        radial-gradient(ellipse 105% 42% at 50% -8%,rgba(91,101,148,.145),transparent 72%),
+        radial-gradient(circle at 10% 5%,rgba(220,45,160,.080),transparent 30%),
+        radial-gradient(circle at 48% 2%,rgba(255,135,38,.064),transparent 29%),
+        radial-gradient(circle at 91% 6%,rgba(52,220,90,.064),transparent 30%),
+        radial-gradient(circle at 94% 48%,rgba(0,205,220,.058),transparent 31%),
+        radial-gradient(circle at 48% 76%,rgba(35,92,255,.060),transparent 35%),
+        radial-gradient(circle at 4% 52%,rgba(126,48,225,.070),transparent 31%),
+        linear-gradient(180deg,#111521 0%,#0b1018 30%,#0b1018 100%);
+      background-repeat:no-repeat;
+      background-size:100vw 100lvh;
+      background-attachment:fixed
     }
     body{
       margin:0;
@@ -37,7 +57,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       isolation:isolate;
       overflow-x:hidden;
       font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:transparent;
+      background:transparent !important;
       user-select:none;
       -webkit-user-select:none;
       -webkit-touch-callout:none
@@ -48,6 +68,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       width:100vw;
       height:100lvh;
       min-height:100dvh;
+      padding-top:env(safe-area-inset-top,0px);
       z-index:0;
       overflow:hidden;
       pointer-events:none;
@@ -889,7 +910,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="form-section">
             <div class="section-name">Version information</div>
             <div class="row"><label><strong>Firmware</strong><span>Software currently installed on the controller.</span></label><span class="version-value" id="firmwareVersion">—</span></div>
-            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.23</span></div>
+            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.24</span></div>
           </div>
 
           <details>
