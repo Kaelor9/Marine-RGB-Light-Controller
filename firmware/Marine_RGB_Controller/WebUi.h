@@ -6,7 +6,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" id="themeColor" content="#0b1018">
+  <meta name="theme-color" id="themeColor" content="#111521">
   <meta name="description" content="Prism RGB light controller">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -24,37 +24,54 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       --radius:24px;--small:16px
     }
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    html{min-height:100%;background:#0b1018}
+    html{
+      min-height:100%;
+      background:#111521
+    }
     body{
-      margin:0;min-height:100vh;min-height:100dvh;color:var(--text);
-      position:relative;isolation:isolate;overflow-x:hidden;
+      margin:0;
+      min-height:100vh;
+      min-height:100dvh;
+      color:var(--text);
+      position:relative;
+      isolation:isolate;
+      overflow-x:hidden;
       font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:#0b1018;
-      user-select:none;-webkit-user-select:none;-webkit-touch-callout:none
+      background:transparent;
+      user-select:none;
+      -webkit-user-select:none;
+      -webkit-touch-callout:none
     }
     .ambient-background{
       position:fixed;
-      top:calc(-110px - env(safe-area-inset-top,0px));
-      left:-18vw;
-      right:-18vw;
-      bottom:-16vh;
+      inset:0;
+      width:100vw;
+      height:100lvh;
+      min-height:100dvh;
       z-index:0;
+      overflow:hidden;
       pointer-events:none;
       background:
-        radial-gradient(ellipse 48% 24% at 48% 10%,rgba(105,118,170,.115),transparent 76%),
-        radial-gradient(circle at 17% 27%,rgba(220,45,160,.070),transparent 31%),
-        radial-gradient(circle at 55% 19%,rgba(255,135,38,.055),transparent 30%),
-        radial-gradient(circle at 91% 33%,rgba(52,220,90,.060),transparent 30%),
-        radial-gradient(circle at 57% 67%,rgba(0,195,232,.060),transparent 34%),
-        radial-gradient(circle at 5% 55%,rgba(108,54,225,.065),transparent 32%),
-        #0b1018;
-      transform:translateZ(0);
+        radial-gradient(ellipse 105% 42% at 50% -8%,rgba(91,101,148,.145),transparent 72%),
+        radial-gradient(circle at 10% 5%,rgba(220,45,160,.080),transparent 30%),
+        radial-gradient(circle at 48% 2%,rgba(255,135,38,.064),transparent 29%),
+        radial-gradient(circle at 91% 6%,rgba(52,220,90,.064),transparent 30%),
+        radial-gradient(circle at 94% 48%,rgba(0,205,220,.058),transparent 31%),
+        radial-gradient(circle at 48% 76%,rgba(35,92,255,.060),transparent 35%),
+        radial-gradient(circle at 4% 52%,rgba(126,48,225,.070),transparent 31%),
+        linear-gradient(180deg,#111521 0%,#0b1018 30%,#0b1018 100%);
+      transform:translateZ(0)
     }
     .ambient-background:after{
       content:"";
       position:absolute;
       inset:0;
-      background:linear-gradient(180deg,rgba(18,24,35,.02),rgba(9,11,16,.08) 78%,rgba(9,11,16,.20));
+      background:linear-gradient(
+        180deg,
+        rgba(255,255,255,.008),
+        rgba(9,11,16,.03) 48%,
+        rgba(9,11,16,.16)
+      )
     }
     button,input,select{font:inherit}
     input,select,textarea{user-select:text;-webkit-user-select:text}
@@ -100,12 +117,43 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),rgba(16,21,30,.86);
       box-shadow:0 26px 80px rgba(0,0,0,.28);padding:22px
     }
-    #control .grid{align-items:start}
-    #control .card{
-      border:0;border-radius:0;background:transparent;
-      box-shadow:none;padding:0;overflow:visible
+    #control .grid{
+      grid-template-columns:1fr;
+      align-items:start
     }
-    #control .card:last-child{padding-top:4px}
+    #control .card{
+      border:0;
+      border-radius:0;
+      background:transparent;
+      box-shadow:none;
+      padding:0;
+      overflow:visible
+    }
+    #lightControlCard,
+    #lightOutputCard{
+      width:min(100%,380px);
+      margin-inline:auto
+    }
+    #lightControlCard{
+      display:flex;
+      flex-direction:column;
+      gap:16px
+    }
+    #lightControlCard .wheel-wrap{
+      width:100%;
+      padding:0
+    }
+    #lightControlCard .wheel-shell{
+      width:min(88%,330px)
+    }
+    #lightControlCard .preview,
+    #lightControlCard .quick{
+      width:100%;
+      margin:0
+    }
+    #lightOutputCard{
+      margin-top:16px
+    }
 
     .title{margin:0;font-size:23px;letter-spacing:-.7px}
     .desc{margin:7px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
@@ -390,24 +438,27 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
 
     .effect-disco{
-      background:linear-gradient(135deg,rgba(255,45,90,.16),rgba(90,45,255,.18),rgba(15,185,255,.14))
+      background:linear-gradient(135deg,rgba(255,45,65,.22),rgba(255,45,65,.065));
+      animation:effectDiscoColors 7.2s steps(1,end) infinite
     }
     .effect-disco:before{
-      inset:-45%;
-      background:conic-gradient(
-        from 15deg,
-        rgba(255,70,110,.17),
-        rgba(125,70,255,.16),
-        rgba(35,205,255,.15),
-        rgba(255,190,45,.13),
-        rgba(255,70,110,.17));
-      filter:blur(18px);
-      animation:effectDiscoTurn 8s linear infinite
+      inset:0;
+      background:radial-gradient(
+        circle at 30% 24%,
+        rgba(255,255,255,.12),
+        transparent 54%
+      );
+      filter:none;
+      animation:effectDiscoPulse 1.2s ease-in-out infinite
     }
     .effect-disco:after{
       inset:0;
-      background:rgba(255,255,255,.018);
-      animation:effectDiscoPulse 4.2s ease-in-out infinite
+      background:linear-gradient(
+        135deg,
+        rgba(255,255,255,.025),
+        transparent 62%
+      );
+      animation:none
     }
 
     .effect-sparkle{
@@ -444,12 +495,29 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       0%{background-position:0% 40%}
       100%{background-position:100% 60%}
     }
-    @keyframes effectDiscoTurn{
-      to{transform:rotate(360deg)}
+    @keyframes effectDiscoColors{
+      0%,100%{
+        background:linear-gradient(135deg,rgba(255,45,65,.22),rgba(255,45,65,.065))
+      }
+      16.666%{
+        background:linear-gradient(135deg,rgba(35,225,85,.21),rgba(35,225,85,.060))
+      }
+      33.333%{
+        background:linear-gradient(135deg,rgba(45,95,255,.23),rgba(45,95,255,.065))
+      }
+      50%{
+        background:linear-gradient(135deg,rgba(255,185,35,.21),rgba(255,185,35,.060))
+      }
+      66.666%{
+        background:linear-gradient(135deg,rgba(185,45,255,.22),rgba(185,45,255,.064))
+      }
+      83.333%{
+        background:linear-gradient(135deg,rgba(15,205,215,.21),rgba(15,205,215,.060))
+      }
     }
     @keyframes effectDiscoPulse{
-      0%,100%{opacity:.18}
-      50%{opacity:.48}
+      0%,100%{opacity:.24}
+      50%{opacity:.54}
     }
     @keyframes effectSparkle{
       0%,100%{opacity:.30;transform:translate3d(-2px,1px,0)}
@@ -809,7 +877,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="form-section">
             <div class="section-name">Version information</div>
             <div class="row"><label><strong>Firmware</strong><span>Software currently installed on the controller.</span></label><span class="version-value" id="firmwareVersion">—</span></div>
-            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.21</span></div>
+            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.22</span></div>
           </div>
 
           <details>
@@ -931,23 +999,43 @@ function drawWheel(){
 
 }
 
+function getWheelPickerGeometry(){
+  const box=$(".wheel-shell");
+  const picker=$("#picker");
+  const width=box.clientWidth;
+  const height=box.clientHeight;
+  const centerX=width/2;
+  const centerY=height/2;
+  const wheelRadius=Math.min(width,height)/2;
+  const pickerRect=picker.getBoundingClientRect();
+  const pickerRadius=Math.max(pickerRect.width,pickerRect.height)/2;
+  const edgeInset=4;
+  const maxCenterRadius=Math.max(
+    0,
+    wheelRadius-pickerRadius-edgeInset
+  );
+
+  return{
+    box,picker,width,height,
+    centerX,centerY,
+    maxCenterRadius
+  }
+}
+
 function positionPicker(nx,ny){
-  const box=$(".wheel-shell"),p=$("#picker");
-  const half=box.clientWidth/2;
-  const pickerRadius=Math.max(p.offsetWidth,p.offsetHeight)/2+2;
-  const maxRadius=Math.max(0,half-pickerRadius);
-  let x=nx*box.clientWidth-half;
-  let y=ny*box.clientHeight-half;
+  const geom=getWheelPickerGeometry();
+  let x=nx*geom.width-geom.centerX;
+  let y=ny*geom.height-geom.centerY;
   const distance=Math.hypot(x,y);
 
-  if(distance>maxRadius){
-    const scale=maxRadius/distance;
+  if(distance>geom.maxCenterRadius&&distance>0){
+    const scale=geom.maxCenterRadius/distance;
     x*=scale;
     y*=scale
   }
 
-  p.style.left=(half+x)+"px";
-  p.style.top=(half+y)+"px"
+  geom.picker.style.left=(geom.centerX+x)+"px";
+  geom.picker.style.top=(geom.centerY+y)+"px"
 }
 
 function setWheelFromRgb(){
@@ -958,25 +1046,24 @@ function setWheelFromRgb(){
 function pick(e){
   if(!hueWheelReady)return;
 
-  const c=$("#hueWheel");
-  const box=c.getBoundingClientRect();
-  const half=box.width/2;
-  const maxRadius=half-4;
-  let x=e.clientX-box.left-half;
-  let y=e.clientY-box.top-half;
+  const geom=getWheelPickerGeometry();
+  const rect=geom.box.getBoundingClientRect();
+  let x=e.clientX-rect.left-geom.centerX;
+  let y=e.clientY-rect.top-geom.centerY;
   const distance=Math.hypot(x,y);
 
-  if(distance>maxRadius){
-    const scale=maxRadius/distance;
+  if(distance>geom.maxCenterRadius&&distance>0){
+    const scale=geom.maxCenterRadius/distance;
     x*=scale;
     y*=scale
   }
 
-  const nx=(x+half)/box.width;
-  const ny=(y+half)/box.height;
-  const sat=Math.max(0,Math.min(1,Math.hypot(x,y)/maxRadius));
-  const angle=(Math.atan2(y,x)*180/Math.PI+450)%360;
-  const hue=angle;
+  const nx=(x+geom.centerX)/geom.width;
+  const ny=(y+geom.centerY)/geom.height;
+  const sat=geom.maxCenterRadius>0
+    ? Math.max(0,Math.min(1,Math.hypot(x,y)/geom.maxCenterRadius))
+    : 0;
+  const hue=(Math.atan2(y,x)*180/Math.PI+450)%360;
   const [r,g,b]=hsvToRgb(hue,sat,1);
 
   state.r=r;
