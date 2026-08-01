@@ -32,19 +32,29 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       background:#0b1018;
       user-select:none;-webkit-user-select:none;-webkit-touch-callout:none
     }
-    body:before{
-      content:"";position:fixed;inset:-10%;z-index:0;pointer-events:none;
+    .ambient-background{
+      position:fixed;
+      top:calc(-110px - env(safe-area-inset-top,0px));
+      left:-18vw;
+      right:-18vw;
+      bottom:-16vh;
+      z-index:0;
+      pointer-events:none;
       background:
-        radial-gradient(circle at 34% 5%,rgba(255,57,55,.050),transparent 31%),
-        radial-gradient(circle at 72% 14%,rgba(255,153,45,.040),transparent 27%),
-        radial-gradient(circle at 97% 53%,rgba(59,225,104,.040),transparent 29%),
-        radial-gradient(circle at 52% 84%,rgba(0,189,238,.048),transparent 34%),
-        radial-gradient(circle at 2% 57%,rgba(126,48,225,.048),transparent 30%);
-      filter:blur(34px);transform:scale(1.04)
+        radial-gradient(ellipse 48% 24% at 48% 10%,rgba(105,118,170,.115),transparent 76%),
+        radial-gradient(circle at 17% 27%,rgba(220,45,160,.070),transparent 31%),
+        radial-gradient(circle at 55% 19%,rgba(255,135,38,.055),transparent 30%),
+        radial-gradient(circle at 91% 33%,rgba(52,220,90,.060),transparent 30%),
+        radial-gradient(circle at 57% 67%,rgba(0,195,232,.060),transparent 34%),
+        radial-gradient(circle at 5% 55%,rgba(108,54,225,.065),transparent 32%),
+        #0b1018;
+      transform:translateZ(0);
     }
-    body:after{
-      content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-      background:linear-gradient(180deg,rgba(18,24,35,.16),rgba(9,11,16,0) 34%);
+    .ambient-background:after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(180deg,rgba(18,24,35,.02),rgba(9,11,16,.08) 78%,rgba(9,11,16,.20));
     }
     button,input,select{font:inherit}
     input,select,textarea{user-select:text;-webkit-user-select:text}
@@ -58,11 +68,30 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
     .top{display:none}
     .tabs{
-      position:sticky;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:10;display:grid;grid-template-columns:repeat(3,1fr);
-      gap:8px;padding:7px;border:1px solid var(--line);border-radius:18px;
-      background:rgba(12,15,21,.82);backdrop-filter:blur(20px);margin-bottom:16px
+      position:sticky;
+      top:calc(env(safe-area-inset-top,0px) + 8px);
+      z-index:10;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      width:min(100%,380px);
+      min-height:58px;
+      gap:6px;
+      padding:6px;
+      margin:0 auto 16px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(12,15,21,.82);
+      backdrop-filter:blur(20px)
     }
-    .tab{min-height:44px;border:0;border-radius:13px;color:var(--muted);background:transparent;font-weight:700}
+    .tab{
+      min-height:44px;
+      border:0;
+      border-radius:13px;
+      color:var(--muted);
+      background:transparent;
+      font-size:14px;
+      font-weight:700
+    }
     .tab.active{color:#10141b;background:#f6f7f9}
     .page{display:none}.page.active{display:block}
     .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}
@@ -123,76 +152,179 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       transform:translate(-50%,-50%);box-shadow:0 3px 15px rgba(0,0,0,.78);pointer-events:none
     }
     .preview{
-      --tile-radius:23px;
-      --slider-height:46px;
+      --tile-radius:20px;
+      --slider-height:40px;
+      --thumb-size:40px;
       --tile:var(--selected,#ff3b30);
-      position:relative;overflow:hidden;height:116px;border:1px solid rgba(255,255,255,.10);
-      border-radius:var(--tile-radius);margin-top:15px;padding:0;
+
+      position:relative;
+      width:100%;
+      height:94px;
+      overflow:hidden;
+      margin:0;
+      padding:0;
+      border:0;
+      border-radius:var(--tile-radius);
+
       background:
-        linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 70%),
+        linear-gradient(
+          180deg,
+          rgba(255,255,255,.038),
+          rgba(255,255,255,0) 72%
+        ),
         var(--tile);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.10),
-        0 11px 25px rgba(0,0,0,.17)
+
+      box-shadow:0 8px 21px rgba(0,0,0,.15);
+    }
+    .preview:after{
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      height:calc(var(--slider-height) / 2);
+      z-index:1;
+      pointer-events:none;
+      background:linear-gradient(90deg,var(--selected,#ff3b30) 0%,#fff 100%);
     }
     .preview-main{position:relative;width:100%;height:100%}
     .preview-head{
-      position:absolute;left:0;right:0;top:0;bottom:var(--slider-height);padding:0 18px;
-      display:flex;align-items:center;justify-content:space-between;gap:14px
+      position:absolute;
+      left:0;
+      right:0;
+      top:0;
+      bottom:var(--slider-height);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:0 16px
     }
     .preview strong{
-      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-      font-size:18px;font-weight:720;letter-spacing:-.25px;
-      text-shadow:0 2px 7px rgba(0,0,0,.18)
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:16px;
+      font-weight:720;
+      letter-spacing:-.2px;
+      text-shadow:0 2px 7px rgba(0,0,0,.16)
     }
     .brightness-value{display:none}
     .brightness-row{
-      position:absolute;left:0;right:0;bottom:0;height:var(--slider-height);padding:0;
-      overflow:hidden;border-radius:var(--tile-radius);
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      z-index:2;
+
+      height:var(--slider-height);
+      padding:0;
+      overflow:hidden;
+
+      /*
+        The visible slider is a true capsule. The matching gradient
+        behind its lower half fills the card's bottom corners, so the
+        capsule no longer looks clipped and no tile colour is exposed.
+      */
+      border-radius:999px;
       background:linear-gradient(90deg,var(--selected,#ff3b30) 0%,#fff 100%);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.08)
+      box-shadow:none;
     }
     .power-switch{
-      position:relative;flex:0 0 auto;width:63px;height:36px;border:0;border-radius:999px;padding:4px;
-      background:rgba(0,0,0,.12);
-      box-shadow:inset 0 1px 3px rgba(0,0,0,.14),0 1px 0 rgba(255,255,255,.10)
+      position:relative;
+      flex:0 0 auto;
+      width:52px;
+      height:30px;
+      padding:3px;
+      border:0;
+      border-radius:999px;
+      background:rgba(0,0,0,.14);
+      box-shadow:inset 0 1px 3px rgba(0,0,0,.13),0 1px 0 rgba(255,255,255,.08)
     }
     .power-switch:before{
       content:"";position:absolute;inset:0;border-radius:inherit;
       box-shadow:inset 0 0 0 1px rgba(255,255,255,.055)
     }
     .power-switch:after{
-      content:"";display:block;width:28px;height:28px;border-radius:50%;background:#fff;
-      box-shadow:0 3px 8px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.02);
+      content:"";
+      display:block;
+      width:24px;
+      height:24px;
+      border-radius:50%;
+      background:#fff;
+      box-shadow:0 2px 7px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.02);
       transition:transform .18s ease
     }
     .power-switch.off:after{transform:translateX(0)}
-    .power-switch.on:after{transform:translateX(27px)}
+    .power-switch.on:after{transform:translateX(22px)}
     .control{margin-top:21px}
     .control-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;font-size:13px}
     .control-head span:last-child{color:var(--muted)}
     input[type=range]{width:100%;accent-color:#fff}
     #brightness{
-      appearance:none;-webkit-appearance:none;position:absolute;
-      left:calc(var(--slider-height) / 2);top:0;
-      width:calc(100% - var(--slider-height));height:100%;margin:0;border:0;outline:0;
-      background:transparent
+      appearance:none;
+      -webkit-appearance:none;
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      margin:0;
+      padding:0;
+      border:0;
+      outline:0;
+      box-sizing:border-box;
+      background:transparent;
     }
-    #brightness::-webkit-slider-runnable-track{height:100%;background:transparent}
-    #brightness::-moz-range-track{height:100%;background:transparent}
+    #brightness::-webkit-slider-runnable-track{
+      height:100%;
+      border:0;
+      background:transparent;
+    }
+    #brightness::-moz-range-track{
+      height:100%;
+      border:0;
+      background:transparent;
+    }
     #brightness::-webkit-slider-thumb{
-      appearance:none;-webkit-appearance:none;width:var(--slider-height);height:var(--slider-height);
-      border:0;border-radius:50%;background:#fff;
-      box-shadow:0 3px 9px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.025)
+      appearance:none;
+      -webkit-appearance:none;
+      width:var(--thumb-size);
+      height:var(--thumb-size);
+      margin:0;
+      border:0;
+      border-radius:50%;
+      background:#fff;
+      box-shadow:
+        0 3px 9px rgba(0,0,0,.20),
+        0 0 0 1px rgba(0,0,0,.025);
     }
     #brightness::-moz-range-thumb{
-      width:var(--slider-height);height:var(--slider-height);border:0;border-radius:50%;background:#fff;
-      box-shadow:0 3px 9px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.025)
+      width:var(--thumb-size);
+      height:var(--thumb-size);
+      border:0;
+      border-radius:50%;
+      background:#fff;
+      box-shadow:
+        0 3px 9px rgba(0,0,0,.20),
+        0 0 0 1px rgba(0,0,0,.025);
     }
-    .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:20px}
+    .quick{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      width:100%;
+      gap:10px;
+      margin:0
+    }
     .swatch{
-      position:relative;aspect-ratio:1;border:2px solid transparent;border-radius:14px;background:var(--c);
-      color:#fff;font-size:0
+      position:relative;
+      width:100%;
+      aspect-ratio:1;
+      border:2px solid transparent;
+      border-radius:16px;
+      background:var(--c);
+      color:#fff;
+      font-size:0;
+      box-shadow:0 6px 14px rgba(0,0,0,.11)
     }
     .swatch.active{border-color:white;box-shadow:0 0 0 3px rgba(255,255,255,.12)}
     .swatch[data-label]:hover:after{
@@ -201,13 +333,145 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
     .effects{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-top:20px}
     .effect{
-      min-height:105px;text-align:left;padding:16px;border:1px solid var(--line);
-      border-radius:18px;color:var(--text);background:rgba(255,255,255,.025)
+      position:relative;
+      isolation:isolate;
+      overflow:hidden;
+      min-height:105px;
+      text-align:left;
+      padding:16px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      color:var(--text);
+      background:rgba(255,255,255,.025);
+      transform:translateZ(0);
+      transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease
     }
-    .effect strong{display:block;font-size:14px}
-    .effect span{display:block;color:var(--muted);font-size:11px;line-height:1.45;margin-top:6px}
-    .effect.active{border-color:rgba(255,255,255,.42);background:rgba(255,255,255,.08)}
-    .rainbow{background:linear-gradient(135deg,rgba(255,70,70,.18),rgba(255,220,70,.12),rgba(50,220,145,.13),rgba(65,120,255,.16),rgba(190,70,255,.16))}
+    .effect:before,
+    .effect:after{
+      content:"";
+      position:absolute;
+      pointer-events:none;
+      z-index:-1
+    }
+    .effect strong{position:relative;z-index:1;display:block;font-size:14px}
+    .effect span{position:relative;z-index:1;display:block;color:var(--muted);font-size:11px;line-height:1.45;margin-top:6px}
+    .effect.active{
+      border-color:rgba(255,255,255,.48);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 8px 24px rgba(0,0,0,.16)
+    }
+
+    .effect-static{
+      background:
+        linear-gradient(135deg,color-mix(in srgb,var(--effect-selected,#4f89ff) 25%,transparent),rgba(255,255,255,.018))
+    }
+    .effect-static:before{
+      inset:-35%;
+      border-radius:50%;
+      background:radial-gradient(circle,color-mix(in srgb,var(--effect-selected,#4f89ff) 34%,transparent),transparent 68%);
+      animation:effectStaticBreath 7s ease-in-out infinite
+    }
+
+    .effect-rainbow{
+      background:
+        linear-gradient(120deg,
+          rgba(255,65,65,.21),
+          rgba(255,205,50,.16),
+          rgba(45,220,135,.17),
+          rgba(55,120,255,.20),
+          rgba(195,65,255,.19),
+          rgba(255,65,65,.21));
+      background-size:260% 260%;
+      animation:effectRainbowDrift 13s ease-in-out infinite
+    }
+
+    .effect-fade{
+      background:
+        linear-gradient(125deg,
+          rgba(255,70,175,.20),
+          rgba(80,100,255,.20),
+          rgba(25,210,205,.17),
+          rgba(255,145,65,.17));
+      background-size:230% 230%;
+      animation:effectFadeDrift 11s ease-in-out infinite alternate
+    }
+
+    .effect-disco{
+      background:linear-gradient(135deg,rgba(255,45,90,.16),rgba(90,45,255,.18),rgba(15,185,255,.14))
+    }
+    .effect-disco:before{
+      inset:-45%;
+      background:conic-gradient(
+        from 15deg,
+        rgba(255,70,110,.17),
+        rgba(125,70,255,.16),
+        rgba(35,205,255,.15),
+        rgba(255,190,45,.13),
+        rgba(255,70,110,.17));
+      filter:blur(18px);
+      animation:effectDiscoTurn 8s linear infinite
+    }
+    .effect-disco:after{
+      inset:0;
+      background:rgba(255,255,255,.018);
+      animation:effectDiscoPulse 4.2s ease-in-out infinite
+    }
+
+    .effect-sparkle{
+      background:linear-gradient(135deg,rgba(40,95,255,.18),rgba(180,55,255,.17),rgba(30,205,205,.13))
+    }
+    .effect-sparkle:before{
+      inset:0;
+      background:
+        radial-gradient(circle at 18% 30%,rgba(255,255,255,.58) 0 1.2px,transparent 2.2px),
+        radial-gradient(circle at 76% 23%,rgba(255,255,255,.42) 0 1px,transparent 2px),
+        radial-gradient(circle at 61% 72%,rgba(255,255,255,.48) 0 1.3px,transparent 2.3px),
+        radial-gradient(circle at 31% 77%,rgba(255,255,255,.34) 0 1px,transparent 2px);
+      animation:effectSparkle 5.4s ease-in-out infinite
+    }
+
+    .effect-off{
+      background:linear-gradient(135deg,rgba(100,110,130,.105),rgba(255,255,255,.012))
+    }
+    .effect-off:before{
+      inset:-20%;
+      background:radial-gradient(circle at 50% 50%,rgba(165,175,195,.075),transparent 66%);
+      animation:effectOffBreath 8s ease-in-out infinite
+    }
+
+    @keyframes effectStaticBreath{
+      0%,100%{opacity:.38;transform:scale(.86)}
+      50%{opacity:.68;transform:scale(1.06)}
+    }
+    @keyframes effectRainbowDrift{
+      0%,100%{background-position:0% 50%}
+      50%{background-position:100% 50%}
+    }
+    @keyframes effectFadeDrift{
+      0%{background-position:0% 40%}
+      100%{background-position:100% 60%}
+    }
+    @keyframes effectDiscoTurn{
+      to{transform:rotate(360deg)}
+    }
+    @keyframes effectDiscoPulse{
+      0%,100%{opacity:.18}
+      50%{opacity:.48}
+    }
+    @keyframes effectSparkle{
+      0%,100%{opacity:.30;transform:translate3d(-2px,1px,0)}
+      38%{opacity:.74;transform:translate3d(2px,-1px,0)}
+      68%{opacity:.46;transform:translate3d(0,2px,0)}
+    }
+    @keyframes effectOffBreath{
+      0%,100%{opacity:.22;transform:scale(.92)}
+      50%{opacity:.45;transform:scale(1.04)}
+    }
+
+    @media(prefers-reduced-motion:reduce){
+      .effect,
+      .effect:before,
+      .effect:after{animation:none!important}
+    }
     .form-section{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
     .form-section:first-of-type{border-top:0;padding-top:4px}
     .section-name{font-size:11px;color:var(--soft);font-weight:800;letter-spacing:1.1px;text-transform:uppercase;margin-bottom:12px}
@@ -240,6 +504,122 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       min-width:72px;text-align:center;padding:7px 10px;border:1px solid var(--line);border-radius:11px;
       background:rgba(255,255,255,.035);color:var(--text);font-size:12px;font-weight:750
     }
+    #lightOutputCard[hidden]{display:none}
+
+    body.light-output-hidden #control .grid{
+      grid-template-columns:1fr
+    }
+    body.light-output-hidden #lightControlCard{
+      width:min(100%,380px);
+      margin-inline:auto
+    }
+
+    /*
+      The four main Light areas use the same 380 px content width:
+      tabs, wheel section, Selected Color and quick colours.
+      The wheel receives the remaining height and is the only flexible
+      section, so the layout remains balanced without overlap.
+    */
+    html.light-scroll-locked,
+    body.light-scroll-locked{
+      height:100%;
+      max-height:100%;
+      overflow:hidden;
+      overscroll-behavior:none
+    }
+    body.light-scroll-locked .shell{
+      display:flex;
+      flex-direction:column;
+      width:min(100%,1120px);
+      height:100dvh;
+      min-height:0;
+      overflow:hidden
+    }
+    body.light-scroll-locked .tabs{
+      position:relative;
+      top:auto;
+      flex:0 0 auto;
+      width:min(100%,380px);
+      margin:0 auto 16px
+    }
+    body.light-scroll-locked main{
+      flex:1 1 auto;
+      min-height:0
+    }
+    body.light-scroll-locked #control{
+      height:100%;
+      min-height:0
+    }
+    body.light-scroll-locked #control .grid{
+      display:block;
+      height:100%;
+      min-height:0
+    }
+    body.light-scroll-locked #lightControlCard{
+      display:flex;
+      flex-direction:column;
+      width:min(100%,380px);
+      height:100%;
+      min-height:0;
+      gap:16px;
+      margin-inline:auto
+    }
+    body.light-scroll-locked .wheel-wrap{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex:1 1 0;
+      width:100%;
+      min-height:0;
+      padding:0
+    }
+    body.light-scroll-locked .wheel-shell{
+      width:auto;
+      height:100%;
+      max-width:88%;
+      max-height:350px;
+      aspect-ratio:1;
+      flex:0 1 auto
+    }
+    body.light-scroll-locked .preview{
+      flex:0 0 auto;
+      width:100%;
+      height:94px;
+      margin:0
+    }
+    body.light-scroll-locked .quick{
+      flex:0 0 auto;
+      width:100%;
+      gap:10px;
+      margin:0
+    }
+
+    @media(max-height:760px){
+      body.light-scroll-locked #lightControlCard{
+        gap:12px
+      }
+      body.light-scroll-locked .tabs{
+        min-height:54px;
+        margin-bottom:12px
+      }
+      body.light-scroll-locked .preview{
+        height:88px;
+        --slider-height:38px;
+        --thumb-size:38px;
+        --tile-radius:19px
+      }
+      body.light-scroll-locked .quick{
+        gap:8px
+      }
+    }
+
+    @media(max-width:410px){
+      body.light-output-hidden #lightControlCard,
+      body.light-scroll-locked #lightControlCard,
+      body.light-scroll-locked .tabs{
+        width:100%
+      }
+    }
     details{border:1px solid var(--line);border-radius:18px;margin-top:12px;background:rgba(255,255,255,.018)}
     summary{padding:16px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:750}
     .details{padding:0 16px 16px}
@@ -257,12 +637,19 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
                 calc(env(safe-area-inset-bottom,0px) + 16px)
                 max(12px,env(safe-area-inset-left,0px))
       }
+      body.light-scroll-locked .shell{
+        padding:calc(env(safe-area-inset-top,0px) + clamp(8px,1.25dvh,14px))
+                max(12px,env(safe-area-inset-right,0px))
+                calc(env(safe-area-inset-bottom,0px) + clamp(8px,1.25dvh,14px))
+                max(12px,env(safe-area-inset-left,0px))
+      }
       .card{padding:18px}#control .card{padding:0}.effects{grid-template-columns:1fr 1fr}
     }
     @media(max-width:480px){.effects{grid-template-columns:1fr}.field{width:145px}}
   </style>
 </head>
 <body>
+<div class="ambient-background" aria-hidden="true"></div>
 <div class="shell">
   <header class="top"></header>
 
@@ -275,7 +662,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
   <main>
     <section class="page active" id="control">
       <div class="grid">
-        <article class="card">
+        <article class="card" id="lightControlCard">
           <div class="wheel-wrap">
             <div class="wheel-shell">
               <canvas id="hueWheel" width="660" height="660"></canvas>
@@ -297,7 +684,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="quick" id="quickColors"></div>
         </article>
 
-        <article class="card">
+        <article class="card" id="lightOutputCard" hidden>
           <h2 class="title">Light output</h2>
           <p class="desc">Color and brightness are applied immediately. Fade timing is configured once under Advanced Settings.</p>
 
@@ -317,12 +704,12 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
         <h1 class="title">Effects</h1>
         <p class="desc">A curated set of effects with clearly different behavior.</p>
         <div class="effects">
-          <button class="effect" data-effect="static"><strong>Static Color</strong><span>One steady color selected from the hue wheel.</span></button>
-          <button class="effect rainbow" data-effect="rainbow"><strong>Rainbow Flow</strong><span>A smooth full-spectrum flow along the strip.</span></button>
-          <button class="effect" data-effect="fade"><strong>Color Fade</strong><span>The complete strip fades through saturated colors.</span></button>
-          <button class="effect" data-effect="disco"><strong>Disco</strong><span>Fast, decisive color changes without harsh flashing.</span></button>
-          <button class="effect" data-effect="sparkle"><strong>Sparkle</strong><span>Small highlights shimmer over the selected base color.</span></button>
-          <button class="effect" data-effect="off"><strong>Off</strong><span>Turns the output off while retaining all settings.</span></button>
+          <button class="effect effect-static" data-effect="static"><strong>Static Color</strong><span>One steady color selected from the hue wheel.</span></button>
+          <button class="effect effect-rainbow" data-effect="rainbow"><strong>Rainbow Flow</strong><span>A smooth full-spectrum flow along the strip.</span></button>
+          <button class="effect effect-fade" data-effect="fade"><strong>Color Fade</strong><span>The complete strip fades through saturated colors.</span></button>
+          <button class="effect effect-disco" data-effect="disco"><strong>Disco</strong><span>Fast, decisive color changes without harsh flashing.</span></button>
+          <button class="effect effect-sparkle" data-effect="sparkle"><strong>Sparkle</strong><span>Small highlights shimmer over the selected base color.</span></button>
+          <button class="effect effect-off" data-effect="off"><strong>Off</strong><span>Turns the output off while retaining all settings.</span></button>
         </div>
 
         <div class="control">
@@ -372,6 +759,17 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
         <article class="card">
           <h2 class="title">Advanced settings</h2>
           <p class="desc">Technical behavior for transitions, isolated inputs and networking.</p>
+
+          <div class="form-section">
+            <div class="section-name">Interface</div>
+            <div class="row">
+              <label>
+                <strong>Show Light Output information</strong>
+                <span>Shows the current mode and RGB information at the bottom of the Light page.</span>
+              </label>
+              <button class="toggle" id="showLightOutput"></button>
+            </div>
+          </div>
 
           <div class="form-section">
             <div class="section-name">Transitions</div>
@@ -425,7 +823,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="form-section">
             <div class="section-name">Version information</div>
             <div class="row"><label><strong>Firmware</strong><span>Software currently installed on the controller.</span></label><span class="version-value" id="firmwareVersion">—</span></div>
-            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.10</span></div>
+            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.15</span></div>
           </div>
 
           <details>
@@ -449,6 +847,24 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let state={r:255,g:128,b:40,power:true,brightness:70,effect:"static",speed:50,intensity:65};
 let lastStaticRgb={r:state.r,g:state.g,b:state.b};
 let dragging=false, colorTimer, controlTimer, settingsLoaded=false;
+let showLightOutput=localStorage.getItem("prismShowLightOutput")==="1";
+
+function updateInterfacePreferences(){
+  const lightPageActive=$("#control").classList.contains("active");
+  const card=$("#lightOutputCard");
+  const toggleButton=$("#showLightOutput");
+
+  card.hidden=!showLightOutput;
+  toggle(toggleButton,showLightOutput);
+
+  document.body.classList.toggle("light-output-hidden",!showLightOutput);
+
+  const lock=lightPageActive&&!showLightOutput;
+  document.documentElement.classList.toggle("light-scroll-locked",lock);
+  document.body.classList.toggle("light-scroll-locked",lock);
+
+  if(lock)window.scrollTo(0,0);
+}
 
 const actionHelp={
   colors:"A short press selects the next preset color. A long press repeats through the presets.",
@@ -605,6 +1021,7 @@ function render(){
   const tile=`rgb(${Math.round(state.r*visualFactor)},${Math.round(state.g*visualFactor)},${Math.round(state.b*visualFactor)})`;
   $("#preview").style.setProperty("--selected",c);
   $("#preview").style.setProperty("--tile",tile);
+  document.documentElement.style.setProperty("--effect-selected",c);
   $("#rgbValue").textContent=`${state.r}, ${state.g}, ${state.b}`;
   if(document.activeElement!==$("#brightness"))$("#brightness").value=state.brightness;
   const bv=$("#brightnessValue"); if(bv)bv.textContent=state.brightness+"%";
@@ -632,8 +1049,11 @@ colors.forEach(({rgb,label})=>{
   $("#quickColors").appendChild(b)
 });
 $$(".tab").forEach(b=>b.onclick=()=>{
-  $$(".tab").forEach(x=>x.classList.remove("active"));$$(".page").forEach(x=>x.classList.remove("active"));
-  b.classList.add("active");$("#"+b.dataset.page).classList.add("active")
+  $$(".tab").forEach(x=>x.classList.remove("active"));
+  $$(".page").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  $("#"+b.dataset.page).classList.add("active");
+  updateInterfacePreferences()
 });
 const wheelCanvas=$("#hueWheel");
 const stopWheelDrag=()=>dragging=false;
@@ -650,6 +1070,11 @@ $$(".effect").forEach(b=>b.onclick=()=>{state.effect=b.dataset.effect;state.powe
 
 function toggle(el,value){el.classList.toggle("on",!!value);el.dataset.value=value?1:0}
 $$(".toggle").forEach(x=>x.onclick=()=>toggle(x,x.dataset.value!=="1"));
+$("#showLightOutput").onclick=()=>{
+  showLightOutput=!showLightOutput;
+  localStorage.setItem("prismShowLightOutput",showLightOutput?"1":"0");
+  updateInterfacePreferences()
+};
 function updateActionHelp(){
   $("#input1Help").textContent=actionHelp[$("#input1Action").value]||"";
   $("#input2Help").textContent=actionHelp[$("#input2Action").value]||""
@@ -700,6 +1125,7 @@ function refreshWheel(){
     setWheelFromRgb()
   },80)
 }
+updateInterfacePreferences();
 drawWheel();
 addEventListener("resize",refreshWheel);
 setInterval(()=>{if(!dragging)load(false)},900);
