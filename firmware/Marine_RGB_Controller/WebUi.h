@@ -164,11 +164,17 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       overflow:visible
     }
     #lightControlCard .wheel-wrap{
+      display:flex;
+      align-items:center;
+      justify-content:center;
       width:100%;
-      padding:0
+      padding:0;
+      margin-inline:auto
     }
     #lightControlCard .wheel-shell{
-      width:min(88%,330px)
+      flex:0 0 auto;
+      width:min(88%,330px);
+      margin-inline:auto
     }
     #lightControlCard .preview,
     #lightControlCard .quick{
@@ -660,17 +666,21 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       margin-inline:auto
     }
     body.light-scroll-locked .wheel-wrap{
-      display:grid;
-      place-items:center;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       width:100%;
       min-height:0;
       padding:0;
+      margin-inline:auto;
       overflow:visible
     }
     body.light-scroll-locked .wheel-shell{
+      flex:0 0 auto;
       width:min(88%,330px);
       height:auto;
       max-height:100%;
+      margin-inline:auto;
       aspect-ratio:1
     }
     body.light-scroll-locked .preview{
@@ -705,6 +715,24 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       body.light-scroll-locked #lightControlCard,
       body.light-scroll-locked .tabs{
         width:100%
+      }
+    }
+
+    /*
+      iOS standalone can round percentage widths differently inside a
+      nested grid. Position the wheel from its own midpoint so its centre
+      remains identical to the Selected Color card and navigation.
+    */
+    @media(display-mode:standalone){
+      #lightControlCard .wheel-wrap{
+        position:relative;
+        left:50%;
+        width:100%;
+        transform:translateX(-50%)
+      }
+      #lightControlCard .wheel-shell{
+        margin-left:auto;
+        margin-right:auto
       }
     }
     details{border:1px solid var(--line);border-radius:18px;margin-top:12px;background:rgba(255,255,255,.018)}
@@ -910,7 +938,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="form-section">
             <div class="section-name">Version information</div>
             <div class="row"><label><strong>Firmware</strong><span>Software currently installed on the controller.</span></label><span class="version-value" id="firmwareVersion">—</span></div>
-            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.24</span></div>
+            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.25</span></div>
           </div>
 
           <details>
