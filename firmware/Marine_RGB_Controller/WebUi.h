@@ -152,69 +152,41 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       transform:translate(-50%,-50%);box-shadow:0 3px 15px rgba(0,0,0,.78);pointer-events:none
     }
     .preview{
-<<<<<<< HEAD
-      --tile-radius:20px;
-      --slider-height:40px;
-      --thumb-size:40px;
-      --tile:var(--selected,#ff3b30);
+      /*
+        The card radius now follows the slider geometry:
+        28 px slider height / 2 = 14 px radius.
+      */
+      --tile-radius:14px;
+      --slider-height:28px;
+      --thumb-size:28px;
 
-      position:relative;
-      width:100%;
-      height:94px;
-      overflow:hidden;
-      margin:0;
-      padding:0;
-      border:0;
-      border-radius:var(--tile-radius);
-=======
-      --tile-radius:23px;
-      --slider-height:46px;
-      --thumb-size:46px;
+      /*
+        The upper colour area is exactly 2.5 × the slider height:
+        2.5 × 28 px = 70 px.
+      */
+      --content-height:70px;
+      --preview-height:calc(var(--content-height) + var(--slider-height));
       --tile:var(--selected,#ff3b30);
 
       position:relative;
       overflow:hidden;
-      height:116px;
-
-      /* Fjern den fysiske kant, som bliver synlig omkring slideren */
+      height:var(--preview-height);
       border:0;
-
       border-radius:var(--tile-radius);
       margin-top:15px;
       padding:0;
->>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
 
       background:
         linear-gradient(
           180deg,
-<<<<<<< HEAD
-          rgba(255,255,255,.038),
-          rgba(255,255,255,0) 72%
-        ),
-        var(--tile);
-
-      box-shadow:0 8px 21px rgba(0,0,0,.15);
-    }
-    .preview:after{
-      content:"";
-      position:absolute;
-      left:0;
-      right:0;
-      bottom:0;
-      height:calc(var(--slider-height) / 2);
-      z-index:1;
-      pointer-events:none;
-      background:linear-gradient(90deg,var(--selected,#ff3b30) 0%,#fff 100%);
-=======
           rgba(255,255,255,.045),
           rgba(255,255,255,0) 70%
         ),
         var(--tile);
 
-      box-shadow:
-        0 11px 25px rgba(0,0,0,.17);
->>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
+      box-shadow:0 11px 25px rgba(0,0,0,.17);
     }
+    .preview:after{display:none}
     .preview-main{position:relative;width:100%;height:100%}
     .preview-head{
       position:absolute;
@@ -222,25 +194,21 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       right:0;
       top:0;
       bottom:var(--slider-height);
+
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:12px;
-      padding:0 16px
+      gap:14px;
+      padding:0 18px
     }
     .preview strong{
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      font-size:16px;
-      font-weight:720;
-      letter-spacing:-.2px;
-      text-shadow:0 2px 7px rgba(0,0,0,.16)
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      font-size:18px;font-weight:720;letter-spacing:-.25px;
+      text-shadow:0 2px 7px rgba(0,0,0,.18)
     }
     .brightness-value{display:none}
     .brightness-row{
       position:absolute;
-<<<<<<< HEAD
       left:0;
       right:0;
       bottom:0;
@@ -248,70 +216,40 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 
       height:var(--slider-height);
       padding:0;
-      overflow:hidden;
+      overflow:visible;
 
       /*
-        The visible slider is a true capsule. The matching gradient
-        behind its lower half fills the card's bottom corners, so the
-        capsule no longer looks clipped and no tile colour is exposed.
+        Slider and parent card now use the exact same 14 px radius.
+        The slider therefore meets the card edge directly instead of
+        being shaped or cropped by a larger outer radius.
       */
-      border-radius:999px;
-      background:linear-gradient(90deg,var(--selected,#ff3b30) 0%,#fff 100%);
-=======
+      border-radius:var(--tile-radius);
 
-      /*
-        Sliderfladen går 1 px uden for kortet.
-        Kortets overflow:hidden fjerner dermed eventuelle
-        anti-aliasing-sprækker langs siderne og i bunden.
-      */
-      left:-1px;
-      right:-1px;
-      bottom:-1px;
+      background:linear-gradient(
+        90deg,
+        var(--selected,#ff3b30) 0%,
+        #fff 100%
+      );
 
-      height:calc(var(--slider-height) + 1px);
-      padding:0;
-      overflow:hidden;
-
-      /* Sikrer helt runde ender uanset den faktiske højde. */
-      border-radius:999px;
-
-      background:
-        linear-gradient(
-          90deg,
-          var(--selected,#ff3b30) 0%,
-          #fff 100%
-        );
-
->>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
       box-shadow:none;
     }
+    .brightness-row:before{display:none}
     .power-switch{
-      position:relative;
-      flex:0 0 auto;
-      width:52px;
-      height:30px;
-      padding:3px;
-      border:0;
-      border-radius:999px;
-      background:rgba(0,0,0,.14);
-      box-shadow:inset 0 1px 3px rgba(0,0,0,.13),0 1px 0 rgba(255,255,255,.08)
+      position:relative;flex:0 0 auto;width:63px;height:36px;border:0;border-radius:999px;padding:4px;
+      background:rgba(0,0,0,.12);
+      box-shadow:inset 0 1px 3px rgba(0,0,0,.14),0 1px 0 rgba(255,255,255,.10)
     }
     .power-switch:before{
       content:"";position:absolute;inset:0;border-radius:inherit;
       box-shadow:inset 0 0 0 1px rgba(255,255,255,.055)
     }
     .power-switch:after{
-      content:"";
-      display:block;
-      width:24px;
-      height:24px;
-      border-radius:50%;
-      background:#fff;
-      box-shadow:0 2px 7px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.02);
+      content:"";display:block;width:28px;height:28px;border-radius:50%;background:#fff;
+      box-shadow:0 3px 8px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.02);
       transition:transform .18s ease
     }
     .power-switch.off:after{transform:translateX(0)}
-    .power-switch.on:after{transform:translateX(22px)}
+    .power-switch.on:after{transform:translateX(27px)}
     .control{margin-top:21px}
     .control-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;font-size:13px}
     .control-head span:last-child{color:var(--muted)}
@@ -319,43 +257,25 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     #brightness{
       appearance:none;
       -webkit-appearance:none;
-<<<<<<< HEAD
       position:absolute;
       inset:0;
+      z-index:1;
       width:100%;
-      height:100%;
-=======
-
-      position:absolute;
-      top:0;
-      bottom:0;
-
-      /*
-        .brightness-row går 1 px uden for kortet på hver side.
-        Range-inputtet rykkes derfor 1 px ind, så knappens ydre
-        kant rammer den synlige ende præcist uden at blive klippet.
-      */
-      left:1px;
-      right:1px;
-      width:auto;
-      height:100%;
-
->>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
+      height:var(--slider-height);
       margin:0;
       padding:0;
       border:0;
       outline:0;
       box-sizing:border-box;
       background:transparent;
-<<<<<<< HEAD
     }
     #brightness::-webkit-slider-runnable-track{
-      height:100%;
+      height:var(--slider-height);
       border:0;
       background:transparent;
     }
     #brightness::-moz-range-track{
-      height:100%;
+      height:var(--slider-height);
       border:0;
       background:transparent;
     }
@@ -364,46 +284,17 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       -webkit-appearance:none;
       width:var(--thumb-size);
       height:var(--thumb-size);
-=======
-    }
-
-    #brightness::-webkit-slider-runnable-track{
-      height:100%;
-      border:0;
-      background:transparent;
-    }
-
-    #brightness::-moz-range-track{
-      height:100%;
-      border:0;
-      background:transparent;
-    }
-
-    #brightness::-webkit-slider-thumb{
-      appearance:none;
-      -webkit-appearance:none;
-
-      width:var(--thumb-size);
-      height:var(--thumb-size);
-
->>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
-      margin:0;
+      margin-top:0;
       border:0;
       border-radius:50%;
       background:#fff;
-<<<<<<< HEAD
-=======
-
->>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
       box-shadow:
         0 3px 9px rgba(0,0,0,.20),
         0 0 0 1px rgba(0,0,0,.025);
     }
-
     #brightness::-moz-range-thumb{
       width:var(--thumb-size);
       height:var(--thumb-size);
-<<<<<<< HEAD
       border:0;
       border-radius:50%;
       background:#fff;
@@ -413,31 +304,21 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
     .quick{
       display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
+      grid-template-columns:repeat(5,minmax(0,1fr));
       width:100%;
-      gap:10px;
+      gap:8px;
       margin:0
-=======
-
-      border:0;
-      border-radius:50%;
-      background:#fff;
-
-      box-shadow:
-        0 3px 9px rgba(0,0,0,.20),
-        0 0 0 1px rgba(0,0,0,.025);
->>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
     }
     .swatch{
       position:relative;
       width:100%;
       aspect-ratio:1;
       border:2px solid transparent;
-      border-radius:16px;
+      border-radius:14px;
       background:var(--c);
       color:#fff;
       font-size:0;
-      box-shadow:0 6px 14px rgba(0,0,0,.11)
+      box-shadow:0 5px 12px rgba(0,0,0,.10)
     }
     .swatch.active{border-color:white;box-shadow:0 0 0 3px rgba(255,255,255,.12)}
     .swatch[data-label]:hover:after{
@@ -628,10 +509,10 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
 
     /*
-      The four main Light areas use the same 380 px content width:
-      tabs, wheel section, Selected Color and quick colours.
-      The wheel receives the remaining height and is the only flexible
-      section, so the layout remains balanced without overlap.
+      Balanced Light layout:
+      - Tabs, wheel section, Selected Color and quick colours share 380 px.
+      - Only the wheel row is flexible.
+      - The existing Selected Color and slider component is not modified.
     */
     html.light-scroll-locked,
     body.light-scroll-locked{
@@ -669,8 +550,8 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       min-height:0
     }
     body.light-scroll-locked #lightControlCard{
-      display:flex;
-      flex-direction:column;
+      display:grid;
+      grid-template-rows:minmax(0,1fr) auto auto;
       width:min(100%,380px);
       height:100%;
       min-height:0;
@@ -678,30 +559,25 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       margin-inline:auto
     }
     body.light-scroll-locked .wheel-wrap{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      flex:1 1 0;
+      display:grid;
+      place-items:center;
       width:100%;
       min-height:0;
-      padding:0
+      padding:0;
+      overflow:visible
     }
     body.light-scroll-locked .wheel-shell{
-      width:auto;
-      height:100%;
-      max-width:88%;
-      max-height:350px;
-      aspect-ratio:1;
-      flex:0 1 auto
+      width:min(88%,330px);
+      height:auto;
+      max-height:100%;
+      aspect-ratio:1
     }
     body.light-scroll-locked .preview{
-      flex:0 0 auto;
       width:100%;
-      height:94px;
+      height:var(--preview-height);
       margin:0
     }
     body.light-scroll-locked .quick{
-      flex:0 0 auto;
       width:100%;
       gap:10px;
       margin:0
@@ -716,13 +592,10 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
         margin-bottom:12px
       }
       body.light-scroll-locked .preview{
-        height:88px;
-        --slider-height:38px;
-        --thumb-size:38px;
-        --tile-radius:19px
+        height:var(--preview-height)
       }
       body.light-scroll-locked .quick{
-        gap:8px
+        gap:7px
       }
     }
 
@@ -936,7 +809,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="form-section">
             <div class="section-name">Version information</div>
             <div class="row"><label><strong>Firmware</strong><span>Software currently installed on the controller.</span></label><span class="version-value" id="firmwareVersion">—</span></div>
-            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.15</span></div>
+            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.21</span></div>
           </div>
 
           <details>
@@ -1153,8 +1026,9 @@ function render(){
 }
 const colors=[
   {rgb:[255,0,0],label:"Red"},{rgb:[0,255,0],label:"Green"},{rgb:[0,0,255],label:"Blue"},
-  {rgb:[255,190,0],label:"Amber"},{rgb:[170,0,255],label:"Violet"},{rgb:[0,220,190],label:"Turquoise"},
-  {rgb:[255,128,40],label:"Warm white"},{rgb:[255,255,255],label:"White"}
+  {rgb:[255,190,0],label:"Amber"},{rgb:[255,45,150],label:"Pink"},
+  {rgb:[170,0,255],label:"Violet"},{rgb:[0,220,190],label:"Turquoise"},{rgb:[255,128,40],label:"Warm white"},
+  {rgb:[255,196,135],label:"Soft white"},{rgb:[255,255,255],label:"White"}
 ];
 colors.forEach(({rgb,label})=>{
   const b=document.createElement("button");b.className="swatch";b.style.setProperty("--c",`rgb(${rgb})`);b.dataset.label=label;b.title=label;
