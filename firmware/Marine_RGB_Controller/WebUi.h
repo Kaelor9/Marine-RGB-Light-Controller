@@ -152,6 +152,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       transform:translate(-50%,-50%);box-shadow:0 3px 15px rgba(0,0,0,.78);pointer-events:none
     }
     .preview{
+<<<<<<< HEAD
       --tile-radius:20px;
       --slider-height:40px;
       --thumb-size:40px;
@@ -165,10 +166,28 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       padding:0;
       border:0;
       border-radius:var(--tile-radius);
+=======
+      --tile-radius:23px;
+      --slider-height:46px;
+      --thumb-size:46px;
+      --tile:var(--selected,#ff3b30);
+
+      position:relative;
+      overflow:hidden;
+      height:116px;
+
+      /* Fjern den fysiske kant, som bliver synlig omkring slideren */
+      border:0;
+
+      border-radius:var(--tile-radius);
+      margin-top:15px;
+      padding:0;
+>>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
 
       background:
         linear-gradient(
           180deg,
+<<<<<<< HEAD
           rgba(255,255,255,.038),
           rgba(255,255,255,0) 72%
         ),
@@ -186,6 +205,15 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       z-index:1;
       pointer-events:none;
       background:linear-gradient(90deg,var(--selected,#ff3b30) 0%,#fff 100%);
+=======
+          rgba(255,255,255,.045),
+          rgba(255,255,255,0) 70%
+        ),
+        var(--tile);
+
+      box-shadow:
+        0 11px 25px rgba(0,0,0,.17);
+>>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
     }
     .preview-main{position:relative;width:100%;height:100%}
     .preview-head{
@@ -212,6 +240,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     .brightness-value{display:none}
     .brightness-row{
       position:absolute;
+<<<<<<< HEAD
       left:0;
       right:0;
       bottom:0;
@@ -228,6 +257,32 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       */
       border-radius:999px;
       background:linear-gradient(90deg,var(--selected,#ff3b30) 0%,#fff 100%);
+=======
+
+      /*
+        Sliderfladen går 1 px uden for kortet.
+        Kortets overflow:hidden fjerner dermed eventuelle
+        anti-aliasing-sprækker langs siderne og i bunden.
+      */
+      left:-1px;
+      right:-1px;
+      bottom:-1px;
+
+      height:calc(var(--slider-height) + 1px);
+      padding:0;
+      overflow:hidden;
+
+      /* Sikrer helt runde ender uanset den faktiske højde. */
+      border-radius:999px;
+
+      background:
+        linear-gradient(
+          90deg,
+          var(--selected,#ff3b30) 0%,
+          #fff 100%
+        );
+
+>>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
       box-shadow:none;
     }
     .power-switch{
@@ -264,16 +319,35 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     #brightness{
       appearance:none;
       -webkit-appearance:none;
+<<<<<<< HEAD
       position:absolute;
       inset:0;
       width:100%;
       height:100%;
+=======
+
+      position:absolute;
+      top:0;
+      bottom:0;
+
+      /*
+        .brightness-row går 1 px uden for kortet på hver side.
+        Range-inputtet rykkes derfor 1 px ind, så knappens ydre
+        kant rammer den synlige ende præcist uden at blive klippet.
+      */
+      left:1px;
+      right:1px;
+      width:auto;
+      height:100%;
+
+>>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
       margin:0;
       padding:0;
       border:0;
       outline:0;
       box-sizing:border-box;
       background:transparent;
+<<<<<<< HEAD
     }
     #brightness::-webkit-slider-runnable-track{
       height:100%;
@@ -290,17 +364,46 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       -webkit-appearance:none;
       width:var(--thumb-size);
       height:var(--thumb-size);
+=======
+    }
+
+    #brightness::-webkit-slider-runnable-track{
+      height:100%;
+      border:0;
+      background:transparent;
+    }
+
+    #brightness::-moz-range-track{
+      height:100%;
+      border:0;
+      background:transparent;
+    }
+
+    #brightness::-webkit-slider-thumb{
+      appearance:none;
+      -webkit-appearance:none;
+
+      width:var(--thumb-size);
+      height:var(--thumb-size);
+
+>>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
       margin:0;
       border:0;
       border-radius:50%;
       background:#fff;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
       box-shadow:
         0 3px 9px rgba(0,0,0,.20),
         0 0 0 1px rgba(0,0,0,.025);
     }
+
     #brightness::-moz-range-thumb{
       width:var(--thumb-size);
       height:var(--thumb-size);
+<<<<<<< HEAD
       border:0;
       border-radius:50%;
       background:#fff;
@@ -314,6 +417,16 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       width:100%;
       gap:10px;
       margin:0
+=======
+
+      border:0;
+      border-radius:50%;
+      background:#fff;
+
+      box-shadow:
+        0 3px 9px rgba(0,0,0,.20),
+        0 0 0 1px rgba(0,0,0,.025);
+>>>>>>> 3c88d61f22b4da4136e8ea26c9482f70aea7a5a1
     }
     .swatch{
       position:relative;
