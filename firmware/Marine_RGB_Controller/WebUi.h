@@ -125,15 +125,30 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     .preview{
       --tile-radius:23px;
       --slider-height:46px;
+      --thumb-size:46px;
       --tile:var(--selected,#ff3b30);
-      position:relative;overflow:hidden;height:116px;border:1px solid rgba(255,255,255,.10);
-      border-radius:var(--tile-radius);margin-top:15px;padding:0;
+
+      position:relative;
+      overflow:hidden;
+      height:116px;
+
+      /* Fjern den fysiske kant, som bliver synlig omkring slideren */
+      border:0;
+
+      border-radius:var(--tile-radius);
+      margin-top:15px;
+      padding:0;
+
       background:
-        linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 70%),
+        linear-gradient(
+          180deg,
+          rgba(255,255,255,.045),
+          rgba(255,255,255,0) 70%
+        ),
         var(--tile);
+
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.10),
-        0 11px 25px rgba(0,0,0,.17)
+        0 11px 25px rgba(0,0,0,.17);
     }
     .preview-main{position:relative;width:100%;height:100%}
     .preview-head{
@@ -147,10 +162,32 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
     .brightness-value{display:none}
     .brightness-row{
-      position:absolute;left:0;right:0;bottom:0;height:var(--slider-height);padding:0;
-      overflow:hidden;border-radius:var(--tile-radius);
-      background:linear-gradient(90deg,var(--selected,#ff3b30) 0%,#fff 100%);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.08)
+      position:absolute;
+
+      /*
+        Sliderfladen går 1 px uden for kortet.
+        Kortets overflow:hidden fjerner dermed eventuelle
+        anti-aliasing-sprækker langs siderne og i bunden.
+      */
+      left:-1px;
+      right:-1px;
+      bottom:-1px;
+
+      height:calc(var(--slider-height) + 1px);
+      padding:0;
+      overflow:hidden;
+
+      /* Sikrer helt runde ender uanset den faktiske højde. */
+      border-radius:999px;
+
+      background:
+        linear-gradient(
+          90deg,
+          var(--selected,#ff3b30) 0%,
+          #fff 100%
+        );
+
+      box-shadow:none;
     }
     .power-switch{
       position:relative;flex:0 0 auto;width:63px;height:36px;border:0;border-radius:999px;padding:4px;
@@ -173,21 +210,71 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     .control-head span:last-child{color:var(--muted)}
     input[type=range]{width:100%;accent-color:#fff}
     #brightness{
-      appearance:none;-webkit-appearance:none;position:absolute;
-      left:calc(var(--slider-height) / 2);top:0;
-      width:calc(100% - var(--slider-height));height:100%;margin:0;border:0;outline:0;
-      background:transparent
+      appearance:none;
+      -webkit-appearance:none;
+
+      position:absolute;
+      top:0;
+      bottom:0;
+
+      /*
+        .brightness-row går 1 px uden for kortet på hver side.
+        Range-inputtet rykkes derfor 1 px ind, så knappens ydre
+        kant rammer den synlige ende præcist uden at blive klippet.
+      */
+      left:1px;
+      right:1px;
+      width:auto;
+      height:100%;
+
+      margin:0;
+      padding:0;
+      border:0;
+      outline:0;
+      box-sizing:border-box;
+      background:transparent;
     }
-    #brightness::-webkit-slider-runnable-track{height:100%;background:transparent}
-    #brightness::-moz-range-track{height:100%;background:transparent}
+
+    #brightness::-webkit-slider-runnable-track{
+      height:100%;
+      border:0;
+      background:transparent;
+    }
+
+    #brightness::-moz-range-track{
+      height:100%;
+      border:0;
+      background:transparent;
+    }
+
     #brightness::-webkit-slider-thumb{
-      appearance:none;-webkit-appearance:none;width:var(--slider-height);height:var(--slider-height);
-      border:0;border-radius:50%;background:#fff;
-      box-shadow:0 3px 9px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.025)
+      appearance:none;
+      -webkit-appearance:none;
+
+      width:var(--thumb-size);
+      height:var(--thumb-size);
+
+      margin:0;
+      border:0;
+      border-radius:50%;
+      background:#fff;
+
+      box-shadow:
+        0 3px 9px rgba(0,0,0,.20),
+        0 0 0 1px rgba(0,0,0,.025);
     }
+
     #brightness::-moz-range-thumb{
-      width:var(--slider-height);height:var(--slider-height);border:0;border-radius:50%;background:#fff;
-      box-shadow:0 3px 9px rgba(0,0,0,.20),0 0 0 1px rgba(0,0,0,.025)
+      width:var(--thumb-size);
+      height:var(--thumb-size);
+
+      border:0;
+      border-radius:50%;
+      background:#fff;
+
+      box-shadow:
+        0 3px 9px rgba(0,0,0,.20),
+        0 0 0 1px rgba(0,0,0,.025);
     }
     .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:20px}
     .swatch{
