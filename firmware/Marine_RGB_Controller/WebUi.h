@@ -137,7 +137,10 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     #lightControlCard{
       display:flex;
       flex-direction:column;
-      gap:16px
+      gap:16px;
+      height:auto;
+      min-height:0;
+      overflow:visible
     }
     #lightControlCard .wheel-wrap{
       width:100%;
@@ -218,7 +221,17 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 
       position:relative;
       overflow:hidden;
+
+      /*
+        Keep the exact same height in both interface modes.
+        The normal Light Output layout uses a flex column, so explicitly
+        disable shrinking instead of allowing Safari to compress the card.
+      */
+      flex:0 0 var(--preview-height);
       height:var(--preview-height);
+      min-height:var(--preview-height);
+      max-height:var(--preview-height);
+
       border:0;
       border-radius:var(--tile-radius);
       margin-top:15px;
@@ -262,7 +275,10 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       bottom:0;
       z-index:2;
 
+      flex:0 0 var(--slider-height);
       height:var(--slider-height);
+      min-height:var(--slider-height);
+      max-height:var(--slider-height);
       padding:0;
       overflow:visible;
 
@@ -310,6 +326,8 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       z-index:1;
       width:100%;
       height:var(--slider-height);
+      min-height:var(--slider-height);
+      max-height:var(--slider-height);
       margin:0;
       padding:0;
       border:0;
@@ -369,10 +387,6 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       box-shadow:0 5px 12px rgba(0,0,0,.10)
     }
     .swatch.active{border-color:white;box-shadow:0 0 0 3px rgba(255,255,255,.12)}
-    .swatch[data-label]:hover:after{
-      content:attr(data-label);position:absolute;left:50%;bottom:-27px;transform:translateX(-50%);
-      white-space:nowrap;padding:4px 7px;border-radius:8px;background:#111722;color:#fff;font-size:10px;z-index:5
-    }
     .effects{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-top:20px}
     .effect{
       position:relative;
@@ -438,25 +452,29 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
     }
 
     .effect-disco{
-      background:linear-gradient(135deg,rgba(255,45,65,.22),rgba(255,45,65,.065));
-      animation:effectDiscoColors 7.2s steps(1,end) infinite
+      /*
+        One stable colour at a time. The paired keyframe boundaries below
+        make each transition approximately 10 ms instead of fading.
+      */
+      background-color:rgb(116,25,34);
+      animation:effectDiscoColors 6s linear infinite
     }
     .effect-disco:before{
       inset:0;
-      background:radial-gradient(
-        circle at 30% 24%,
-        rgba(255,255,255,.12),
-        transparent 54%
+      background:linear-gradient(
+        135deg,
+        rgba(255,255,255,.075),
+        transparent 58%
       );
       filter:none;
-      animation:effectDiscoPulse 1.2s ease-in-out infinite
+      animation:none
     }
     .effect-disco:after{
       inset:0;
       background:linear-gradient(
-        135deg,
-        rgba(255,255,255,.025),
-        transparent 62%
+        180deg,
+        transparent,
+        rgba(0,0,0,.10)
       );
       animation:none
     }
@@ -496,28 +514,22 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       100%{background-position:100% 60%}
     }
     @keyframes effectDiscoColors{
-      0%,100%{
-        background:linear-gradient(135deg,rgba(255,45,65,.22),rgba(255,45,65,.065))
-      }
-      16.666%{
-        background:linear-gradient(135deg,rgba(35,225,85,.21),rgba(35,225,85,.060))
-      }
-      33.333%{
-        background:linear-gradient(135deg,rgba(45,95,255,.23),rgba(45,95,255,.065))
-      }
-      50%{
-        background:linear-gradient(135deg,rgba(255,185,35,.21),rgba(255,185,35,.060))
-      }
-      66.666%{
-        background:linear-gradient(135deg,rgba(185,45,255,.22),rgba(185,45,255,.064))
-      }
-      83.333%{
-        background:linear-gradient(135deg,rgba(15,205,215,.21),rgba(15,205,215,.060))
-      }
-    }
-    @keyframes effectDiscoPulse{
-      0%,100%{opacity:.24}
-      50%{opacity:.54}
+      /* Red: hold, then switch in about 10 ms */
+      0%,16.49%{background-color:rgb(116,25,34)}
+      16.66%,33.16%{background-color:rgb(22,105,48)}
+
+      /* Green -> blue */
+      33.33%,49.83%{background-color:rgb(26,57,130)}
+
+      /* Blue -> amber */
+      50%,66.50%{background-color:rgb(128,87,18)}
+
+      /* Amber -> violet */
+      66.66%,83.16%{background-color:rgb(91,29,132)}
+
+      /* Violet -> cyan, then loop to red */
+      83.33%,99.83%{background-color:rgb(14,105,111)}
+      100%{background-color:rgb(116,25,34)}
     }
     @keyframes effectSparkle{
       0%,100%{opacity:.30;transform:translate3d(-2px,1px,0)}
@@ -877,7 +889,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="form-section">
             <div class="section-name">Version information</div>
             <div class="row"><label><strong>Firmware</strong><span>Software currently installed on the controller.</span></label><span class="version-value" id="firmwareVersion">—</span></div>
-            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.22</span></div>
+            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.23</span></div>
           </div>
 
           <details>
@@ -1118,7 +1130,10 @@ const colors=[
   {rgb:[255,196,135],label:"Soft white"},{rgb:[255,255,255],label:"White"}
 ];
 colors.forEach(({rgb,label})=>{
-  const b=document.createElement("button");b.className="swatch";b.style.setProperty("--c",`rgb(${rgb})`);b.dataset.label=label;b.title=label;
+  const b=document.createElement("button");
+  b.className="swatch";
+  b.style.setProperty("--c",`rgb(${rgb})`);
+  b.setAttribute("aria-label",label);
   b.onclick=()=>{[state.r,state.g,state.b]=rgb;lastStaticRgb={r:rgb[0],g:rgb[1],b:rgb[2]};state.power=true;state.effect="static";render();scheduleColor()};
   $("#quickColors").appendChild(b)
 });
