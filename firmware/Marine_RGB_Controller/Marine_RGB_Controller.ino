@@ -574,16 +574,17 @@ bool updateBrightnessSmoothing(uint32_t now) {
     return false;
   }
 
-  // Time-based exponential tracking. A short ~22 ms time constant keeps the
-  // output tied closely to a finger moving the live slider, while the 120 Hz
-  // render cadence fills the gaps between HTTP updates instead of exposing
-  // them as visible brightness steps. Q8 retains sub-byte precision.
+  // Time-based exponential tracking. A ~45 ms time constant intentionally
+  // bridges the small gaps between successive HTTP targets instead of racing
+  // all the way to each individual target and exposing the network cadence as
+  // visible steps. It still tracks a moving finger closely. Q8 retains
+  // sub-byte precision.
   uint32_t dt = now - lastBrightnessSmoothingAt;
   if (dt == 0) dt = 1;
   if (dt > 40) dt = 40; // Do not jump after a temporary Wi-Fi/main-loop stall.
   lastBrightnessSmoothingAt = now;
 
-  constexpr uint16_t SMOOTHING_TAU_MS = 22;
+  constexpr uint16_t SMOOTHING_TAU_MS = 45;
   const uint32_t denominator = SMOOTHING_TAU_MS + dt;
   int32_t step = static_cast<int32_t>((static_cast<int64_t>(delta) * dt) / denominator);
 
@@ -617,8 +618,8 @@ void updateLeds() {
   if (!outputDirty && !continuousFrames) return;
 
   // State changes are rendered immediately. Brightness smoothing gets a
-  // dedicated ~120 Hz cadence; effects keep their normal frame interval.
-  const uint16_t frameInterval = brightnessSmoothingActive ? 8 : effectFrameInterval();
+  // dedicated ~100 Hz cadence; effects keep their normal frame interval.
+  const uint16_t frameInterval = brightnessSmoothingActive ? 10 : effectFrameInterval();
   if (!outputDirty && now - lastEffectFrame < frameInterval) return;
   lastEffectFrame = now;
   updateBrightnessSmoothing(now);
@@ -990,10 +991,10 @@ static const char PRISM_WIFI_PORTAL_HEAD[] = R"PRISMSETUP(
   color-scheme:dark;
   --bg:#090b10;
   --panel:#121721;
+  --panel2:#10151e;
   --line:rgba(255,255,255,.09);
   --text:#f5f7fa;
   --muted:#929cac;
-  --soft:#667182;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{
@@ -1023,7 +1024,7 @@ body{
   width:min(calc(100% - 32px),420px)!important;
   max-width:420px!important;
   margin:0 auto!important;
-  padding:34px 0 40px!important
+  padding:28px 0 40px!important
 }
 h1{
   margin:0 0 18px!important;
@@ -1034,7 +1035,50 @@ h1{
 }
 h2,h3,h4{color:var(--text)!important}
 p,label,small{color:var(--muted)!important}
-a{color:#d6dcff!important}
+a{color:var(--text)!important;text-decoration:none!important}
+
+/* WiFi scan rows. WiFiManager emits each AP as a plain div containing the
+   SSID link and RSSI icon. JS below marks those divs as .prism-network-row. */
+.prism-network-row{
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  min-height:52px!important;
+  margin:0!important;
+  padding:0 62px 0 8px!important;
+  border-bottom:1px solid rgba(255,255,255,.055)!important;
+}
+.prism-network-row:last-of-type{border-bottom:0!important}
+.prism-network-row>a[data-ssid]{
+  display:block!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  color:var(--text)!important;
+  font-size:18px!important;
+  line-height:1.25!important;
+  font-weight:650!important;
+}
+.prism-network-row>.q{
+  position:absolute!important;
+  right:8px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  float:none!important;
+  width:46px!important;
+  min-width:46px!important;
+  height:24px!important;
+  margin:0!important;
+  padding:4px 5px!important;
+  border:1px solid var(--line)!important;
+  border-radius:12px!important;
+  background:rgba(18,23,33,.84)!important;
+}
+/* WiFiManager's signal/lock sprite is black by default. Invert the icon only,
+   not the row or text, so it remains readable on Prism's dark background. */
+.prism-network-row>.q[role=img]{filter:invert(1) brightness(1.65)!important}
+
 form,.msg{
   border:1px solid var(--line)!important;
   border-radius:24px!important;
@@ -1042,14 +1086,7 @@ form,.msg{
   box-shadow:0 26px 80px rgba(0,0,0,.28)!important;
   padding:18px!important
 }
-.q{
-  border:1px solid var(--line)!important;
-  border-radius:16px!important;
-  background:rgba(18,23,33,.88)!important;
-  margin:8px 0!important;
-  padding:12px 14px!important
-}
-input,select{
+input:not([type=checkbox]),select{
   width:100%!important;
   min-height:48px!important;
   padding:0 14px!important;
@@ -1060,10 +1097,40 @@ input,select{
   background:#121721!important;
   font:inherit!important
 }
-input:focus,select:focus{
+input:not([type=checkbox]):focus,select:focus{
   border-color:rgba(255,255,255,.22)!important;
   box-shadow:0 0 0 3px rgba(255,255,255,.055)!important
 }
+/* Override the generic full-width input rule specifically for Show Password. */
+input[type=checkbox]{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  display:inline-grid!important;
+  place-content:center!important;
+  width:20px!important;
+  height:20px!important;
+  min-width:20px!important;
+  min-height:20px!important;
+  margin:14px 8px 14px 0!important;
+  padding:0!important;
+  vertical-align:middle!important;
+  border:1px solid rgba(255,255,255,.28)!important;
+  border-radius:6px!important;
+  background:#121721!important;
+}
+input[type=checkbox]::before{
+  content:"";
+  width:10px;
+  height:6px;
+  border-left:2px solid #10141b;
+  border-bottom:2px solid #10141b;
+  transform:rotate(-45deg) scale(0);
+  transform-origin:center;
+}
+input[type=checkbox]:checked{background:#f6f7f9!important;border-color:#f6f7f9!important}
+input[type=checkbox]:checked::before{transform:rotate(-45deg) scale(1)}
+label[for=showpass]{display:inline!important;vertical-align:middle!important;color:var(--muted)!important}
+
 button,.button,input[type=submit]{
   width:100%!important;
   min-height:48px!important;
@@ -1079,10 +1146,19 @@ button,.button,input[type=submit]{
 button:hover,.button:hover,input[type=submit]:hover{background:#fff!important}
 hr{border:0!important;border-top:1px solid var(--line)!important}
 @media(max-width:480px){
-  .wrap{width:min(calc(100% - 28px),420px)!important;padding-top:24px!important}
+  .wrap{width:min(calc(100% - 28px),420px)!important;padding-top:22px!important}
   h1{font-size:24px!important}
+  .prism-network-row{min-height:50px!important;padding-right:58px!important}
+  .prism-network-row>a[data-ssid]{font-size:17px!important}
 }
 </style>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('a[data-ssid]').forEach(function(link){
+    if(link.parentElement) link.parentElement.classList.add('prism-network-row');
+  });
+});
+</script>
 )PRISMSETUP";
 
 void configureWiFiManagerPortal(WiFiManager& manager) {
