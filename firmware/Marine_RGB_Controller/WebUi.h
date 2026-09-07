@@ -859,8 +859,24 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
           <div class="form-section">
             <div class="section-name">LED configuration</div>
             <div class="row"><label><strong>LED count</strong><span>Active pixels on output 1.</span></label><input class="field" id="ledCount" type="number" min="1" max="300"></div>
+            <div class="row"><label><strong>LED chipset</strong><span>Single-wire chipset on output 1. Applied after restart.</span></label>
+              <select class="field" id="ledChipset">
+                <option value="WS2811">WS2811</option>
+                <option value="WS2812">WS2812</option>
+                <option value="WS2812B">WS2812B</option>
+                <option value="WS2813">WS2813</option>
+                <option value="WS2815">WS2815</option>
+                <option value="SK6812">SK6812 (RGB)</option>
+                <option value="APA104">APA104</option>
+                <option value="UCS1903">UCS1903 (400 kHz)</option>
+                <option value="UCS1903B">UCS1903B (800 kHz)</option>
+              </select>
+            </div>
             <div class="row"><label><strong>Color order</strong><span>Applied after restart.</span></label>
-              <select class="field" id="colorOrder"><option>RGB</option><option>GRB</option><option>BRG</option></select>
+              <select class="field" id="colorOrder">
+                <option>RGB</option><option>RBG</option><option>GRB</option>
+                <option>GBR</option><option>BRG</option><option>BGR</option>
+              </select>
             </div>
             <div class="row"><label><strong>Warm-white compensation</strong><span>Warms the warm-white preset and nearby wheel colors, with the strongest correction at high brightness.</span></label><button class="toggle" id="warmCompensation"></button></div>
           </div>
@@ -937,8 +953,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 
           <div class="form-section">
             <div class="section-name">Version information</div>
-            <div class="row"><label><strong>Firmware</strong><span>Software currently installed on the controller.</span></label><span class="version-value" id="firmwareVersion">—</span></div>
-            <div class="row"><label><strong>Web interface</strong><span>Embedded Prism interface build.</span></label><span class="version-value">v0.4.25</span></div>
+            <div class="row"><label><strong>Firmware</strong><span>Reported by the controller. The web interface is embedded in the firmware and shares this version.</span></label><span class="version-value" id="firmwareVersion">—</span></div>
           </div>
 
           <details>
@@ -961,7 +976,11 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let state={r:255,g:128,b:40,power:true,brightness:70,effect:"static",speed:50,intensity:65};
 let lastStaticRgb={r:state.r,g:state.g,b:state.b};
-let dragging=false, colorTimer, controlTimer, settingsLoaded=false;
+let dragging=false, colorTimer, brightnessTimer, effectTimer, settingsLoaded=false;
+// Guards against the /api/state poll overwriting a control that is being used
+// right now, and against overlapping polls when the controller is slow.
+let interactionUntil=0, loadInFlight=false, lastErrorToast=0;
+function markInteraction(ms){interactionUntil=Date.now()+(ms||1400)}
 let showLightOutput=localStorage.getItem("prismShowLightOutput")==="1";
 
 function updateInterfacePreferences(){
@@ -1141,12 +1160,30 @@ function pick(e){
   render();
   scheduleColor()
 }
-function scheduleColor(){
-  clearTimeout(colorTimer);
-  colorTimer=setTimeout(()=>api("/api/color",{r:state.r,g:state.g,b:state.b,power:1}).catch(()=>{}),55)
+function reportFailure(message){
+  $("#connectionText").textContent="Offline";
+  const now=Date.now();
+  // Rate limited: dragging the wheel while offline must not spam the toast.
+  if(now-lastErrorToast>4000){lastErrorToast=now;toast(message||"Controller did not respond")}
 }
-function scheduleControl(path,data){
-  clearTimeout(controlTimer);controlTimer=setTimeout(()=>api(path,data).catch(()=>{}),70)
+function send(path,data,message){
+  markInteraction();
+  return api(path,data).catch(err=>{console.error(path,err);reportFailure(message)})
+}
+function scheduleColor(){
+  markInteraction();
+  clearTimeout(colorTimer);
+  colorTimer=setTimeout(()=>send("/api/color",{r:state.r,g:state.g,b:state.b,power:1},"Color was not applied"),55)
+}
+function scheduleBrightness(){
+  markInteraction();
+  clearTimeout(brightnessTimer);
+  brightnessTimer=setTimeout(()=>send("/api/brightness",{value:state.brightness},"Brightness was not applied"),70)
+}
+function scheduleEffect(){
+  markInteraction();
+  clearTimeout(effectTimer);
+  effectTimer=setTimeout(()=>send("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity},"Effect was not applied"),70)
 }
 function render(){
   const c=`rgb(${state.r},${state.g},${state.b})`;
@@ -1200,11 +1237,11 @@ wheelCanvas.addEventListener("pointermove",e=>dragging&&pick(e));
 wheelCanvas.addEventListener("pointerup",stopWheelDrag);
 wheelCanvas.addEventListener("pointercancel",stopWheelDrag);
 wheelCanvas.addEventListener("lostpointercapture",stopWheelDrag);
-$("#brightness").oninput=e=>{state.brightness=+e.target.value;render();scheduleControl("/api/brightness",{value:state.brightness})};
-$("#speed").oninput=e=>{state.speed=+e.target.value;render();scheduleControl("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity})};
-$("#intensity").oninput=e=>{state.intensity=+e.target.value;render();scheduleControl("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity})};
-$("#powerBtn").onclick=()=>{state.power=!state.power;api("/api/power",{value:state.power?1:0});render()};
-$$(".effect").forEach(b=>b.onclick=()=>{state.effect=b.dataset.effect;state.power=state.effect!=="off";api("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity});render()});
+$("#brightness").oninput=e=>{state.brightness=+e.target.value;render();scheduleBrightness()};
+$("#speed").oninput=e=>{state.speed=+e.target.value;render();scheduleEffect()};
+$("#intensity").oninput=e=>{state.intensity=+e.target.value;render();scheduleEffect()};
+$("#powerBtn").onclick=()=>{state.power=!state.power;render();send("/api/power",{value:state.power?1:0},"Power was not applied")};
+$$(".effect").forEach(b=>b.onclick=()=>{state.effect=b.dataset.effect;state.power=state.effect!=="off";render();send("/api/effect",{name:state.effect,speed:state.speed,intensity:state.intensity},"Effect was not applied")});
 
 function toggle(el,value){el.classList.toggle("on",!!value);el.dataset.value=value?1:0}
 $$(".toggle").forEach(x=>x.onclick=()=>toggle(x,x.dataset.value!=="1"));
@@ -1220,11 +1257,20 @@ function updateActionHelp(){
 $$(".input-action").forEach(x=>x.onchange=updateActionHelp);
 
 async function load(full=false){
+  if(loadInFlight&&!full)return;
+  loadInFlight=true;
   try{
-    const d=await api("/api/state");Object.assign(state,d.state);if(state.effect==="static")lastStaticRgb={r:state.r,g:state.g,b:state.b};
+    const d=await api("/api/state");
+    // Only adopt the controller state when the user is not operating a control.
+    // Otherwise a poll landing mid-drag pulls the slider or wheel back.
+    if(!dragging&&Date.now()>interactionUntil){
+      Object.assign(state,d.state);
+      if(state.effect==="static")lastStaticRgb={r:state.r,g:state.g,b:state.b}
+    }
     if(full||!settingsLoaded){
       $("#deviceName").value=d.settings.deviceName;const titleEl=$("#deviceTitle");if(titleEl)titleEl.textContent=d.settings.deviceName;
-      $("#ledCount").value=d.settings.ledCount;$("#colorOrder").value=d.settings.colorOrder;
+      $("#ledCount").value=d.settings.ledCount;$("#colorOrder").value=d.settings.colorOrder||"BRG";
+      $("#ledChipset").value=d.settings.ledChipset||"WS2811";
       $("#maxBrightness").value=d.settings.maxBrightness;$("#defaultFade").value=d.settings.defaultFade;
       $("#mdnsName").value=d.settings.mdnsName;
       $("#input1Action").value=d.settings.input1Action;$("#input2Action").value=d.settings.input2Action;
@@ -1238,23 +1284,63 @@ async function load(full=false){
     const firmwareEl=$("#firmwareVersion");
     if(firmwareEl)firmwareEl.textContent=d.firmware?(String(d.firmware).startsWith("v")?d.firmware:"v"+d.firmware):"—";
     render()
-  }catch(e){$("#connectionText").textContent="Offline"}
+  }catch(e){
+    console.error("load",e);
+    $("#connectionText").textContent="Offline"
+  }finally{loadInFlight=false}
+}
+function numberInRange(selector,min,max){
+  const value=parseInt($(selector).value,10);
+  return Number.isFinite(value)&&value>=min&&value<=max?value:null
 }
 $("#saveSettings").onclick=async()=>{
-  await api("/api/settings",{
-    deviceName:$("#deviceName").value,ledCount:$("#ledCount").value,colorOrder:$("#colorOrder").value,
-    maxBrightness:$("#maxBrightness").value,restoreState:$("#restoreState").dataset.value||0,
-    smoothTransitions:$("#smoothTransitions").dataset.value||0,defaultFade:$("#defaultFade").value,
-    warmCompensation:$("#warmCompensation").dataset.value||0,
-    mdnsName:$("#mdnsName").value,
-    input1Enabled:$("#input1Enabled").dataset.value||0,input2Enabled:$("#input2Enabled").dataset.value||0,
-    input1Action:$("#input1Action").value,input2Action:$("#input2Action").value
-  });
-  toast("Settings saved — restart after changing LED count, color order or mDNS name");setTimeout(()=>load(true),300)
+  // The firmware validates everything as well, but catching it here tells the
+  // user which field is wrong instead of silently clamping it.
+  const ledCount=numberInRange("#ledCount",1,300);
+  if(ledCount===null)return toast("LED count must be between 1 and 300");
+  const maxBrightness=numberInRange("#maxBrightness",1,100);
+  if(maxBrightness===null)return toast("Maximum brightness must be between 1 and 100");
+  const defaultFade=numberInRange("#defaultFade",0,5000);
+  if(defaultFade===null)return toast("Default fade must be between 0 and 5000 ms");
+  if(!$("#deviceName").value.trim())return toast("Device name cannot be empty");
+  if(!/[a-z0-9]/i.test($("#mdnsName").value))return toast("mDNS hostname needs at least one letter or digit");
+
+  const btn=$("#saveSettings");
+  btn.disabled=true;
+  try{
+    await api("/api/settings",{
+      deviceName:$("#deviceName").value,ledCount:ledCount,colorOrder:$("#colorOrder").value,
+      ledChipset:$("#ledChipset").value,
+      maxBrightness:maxBrightness,restoreState:$("#restoreState").dataset.value||0,
+      smoothTransitions:$("#smoothTransitions").dataset.value||0,defaultFade:defaultFade,
+      warmCompensation:$("#warmCompensation").dataset.value||0,
+      mdnsName:$("#mdnsName").value,
+      input1Enabled:$("#input1Enabled").dataset.value||0,input2Enabled:$("#input2Enabled").dataset.value||0,
+      input1Action:$("#input1Action").value,input2Action:$("#input2Action").value
+    });
+    toast("Settings saved — restart to apply LED count, chipset, color order or mDNS name");
+    // Reloads the values the firmware actually stored, so a sanitised hostname
+    // or a clamped number is visible immediately.
+    setTimeout(()=>load(true),300)
+  }catch(e){
+    console.error("settings",e);
+    toast("Settings were not saved — the controller did not respond")
+  }finally{
+    btn.disabled=false
+  }
 };
-$("#restartBtn").onclick=()=>confirm("Restart the controller?")&&api("/api/restart",{}).then(()=>toast("Restarting"));
-$("#wifiResetBtn").onclick=()=>confirm("Erase saved Wi-Fi and restart?")&&api("/api/reset-wifi",{});
-$("#factoryResetBtn").onclick=()=>confirm("Erase all controller settings?")&&api("/api/factory-reset",{});
+$("#restartBtn").onclick=()=>{
+  if(!confirm("Restart the controller?"))return;
+  api("/api/restart",{}).then(()=>toast("Restarting")).catch(()=>toast("Restart may already be in progress"))
+};
+$("#wifiResetBtn").onclick=()=>{
+  if(!confirm("Erase saved Wi-Fi and restart?"))return;
+  api("/api/reset-wifi",{}).catch(()=>toast("Wi-Fi reset may already be in progress"))
+};
+$("#factoryResetBtn").onclick=()=>{
+  if(!confirm("Erase all controller settings?"))return;
+  api("/api/factory-reset",{}).catch(()=>toast("Factory reset may already be in progress"))
+};
 let wheelResizeTimer;
 function refreshWheel(){
   clearTimeout(wheelResizeTimer);

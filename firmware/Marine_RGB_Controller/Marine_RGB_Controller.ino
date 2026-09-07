@@ -12,6 +12,28 @@
 
 enum class Effect : uint8_t { Static, Rainbow, ColorFade, Disco, Sparkle, Off };
 
+// Only single-wire (clockless) chipsets are listed here. Clock-based parts such
+// as APA102/SK9822 need a second output line and RGBW parts need a fourth
+// channel, so neither can be driven correctly by the current Prism hardware.
+enum class LedChipset : uint8_t {
+  WS2811 = 0,
+  WS2812,
+  WS2812B,
+  WS2813,
+  WS2815,
+  SK6812,
+  APA104,
+  UCS1903,
+  UCS1903B
+};
+
+enum class ColorOrder : uint8_t { RGB = 0, RBG, GRB, GBR, BRG, BGR };
+
+// Both defaults deliberately match firmware 0.4.x, so an existing installation
+// behaves exactly the same after updating even though it has no stored value.
+constexpr LedChipset DEFAULT_LED_CHIPSET = LedChipset::WS2811;
+constexpr ColorOrder DEFAULT_COLOR_ORDER = ColorOrder::BRG;
+
 enum class InputAction : uint8_t {
   CycleColors,
   TogglePower,
@@ -41,7 +63,8 @@ struct Settings {
   String mdnsName = DEFAULT_MDNS_NAME;
   uint16_t ledCount = DEFAULT_LED_COUNT;
   uint8_t maxBrightness = 100;
-  String colorOrder = "BRG";
+  ColorOrder colorOrder = DEFAULT_COLOR_ORDER;
+  LedChipset chipset = DEFAULT_LED_CHIPSET;
   bool restoreState = true;
   bool smoothTransitions = true;
   bool warmCompensation = true;
@@ -64,6 +87,7 @@ struct DebouncedInput {
   bool initialized = false;
   bool longPressActive = false;
   bool dimDirectionUp = true;
+  bool ignoreUntilRelease = false;
 };
 
 CRGB leds[MAX_LED_COUNT];
@@ -137,13 +161,111 @@ const char* effectName(Effect effect) {
   return "static";
 }
 
-Effect parseEffect(const String& value) {
-  if (value == "rainbow") return Effect::Rainbow;
-  if (value == "fade") return Effect::ColorFade;
-  if (value == "disco") return Effect::Disco;
-  if (value == "sparkle") return Effect::Sparkle;
-  if (value == "off") return Effect::Off;
-  return Effect::Static;
+// Returns false when the value is not a known effect, so the caller can keep
+// the current one instead of silently falling back to Static.
+bool parseEffect(const String& value, Effect& out) {
+  for (uint8_t i = 0; i <= static_cast<uint8_t>(Effect::Off); ++i) {
+    if (value == effectName(static_cast<Effect>(i))) {
+      out = static_cast<Effect>(i);
+      return true;
+    }
+  }
+  return false;
+}
+
+const char* ledChipsetName(LedChipset chipset) {
+  switch (chipset) {
+    case LedChipset::WS2811: return "WS2811";
+    case LedChipset::WS2812: return "WS2812";
+    case LedChipset::WS2812B: return "WS2812B";
+    case LedChipset::WS2813: return "WS2813";
+    case LedChipset::WS2815: return "WS2815";
+    case LedChipset::SK6812: return "SK6812";
+    case LedChipset::APA104: return "APA104";
+    case LedChipset::UCS1903: return "UCS1903";
+    case LedChipset::UCS1903B: return "UCS1903B";
+  }
+  return "WS2811";
+}
+
+bool parseLedChipset(const String& value, LedChipset& out) {
+  String candidate(value);
+  candidate.trim();
+  candidate.toUpperCase();
+  for (uint8_t i = 0; i <= static_cast<uint8_t>(LedChipset::UCS1903B); ++i) {
+    if (candidate == ledChipsetName(static_cast<LedChipset>(i))) {
+      out = static_cast<LedChipset>(i);
+      return true;
+    }
+  }
+  return false;
+}
+
+const char* colorOrderName(ColorOrder order) {
+  switch (order) {
+    case ColorOrder::RGB: return "RGB";
+    case ColorOrder::RBG: return "RBG";
+    case ColorOrder::GRB: return "GRB";
+    case ColorOrder::GBR: return "GBR";
+    case ColorOrder::BRG: return "BRG";
+    case ColorOrder::BGR: return "BGR";
+  }
+  return "BRG";
+}
+
+bool parseColorOrder(const String& value, ColorOrder& out) {
+  String candidate(value);
+  candidate.trim();
+  candidate.toUpperCase();
+  for (uint8_t i = 0; i <= static_cast<uint8_t>(ColorOrder::BGR); ++i) {
+    if (candidate == colorOrderName(static_cast<ColorOrder>(i))) {
+      out = static_cast<ColorOrder>(i);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Reduces any input to a single RFC 1123 style hostname label: lowercase
+// letters, digits and inner hyphens only. Separators collapse into one hyphen
+// and the name never starts or ends with one. Falls back to the default when
+// nothing usable is left, so mDNS can never be started with an invalid name.
+String sanitizeHostname(const String& value) {
+  String result;
+  result.reserve(value.length() + 1);
+  for (size_t i = 0; i < value.length(); ++i) {
+    char c = value[i];
+    if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+    const bool allowed = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+    if (allowed) {
+      result += c;
+    } else if (result.length() > 0 && result[result.length() - 1] != '-') {
+      result += '-';
+    }
+    if (result.length() >= MAX_HOSTNAME_LENGTH) break;
+  }
+  while (result.length() > 0 && result[result.length() - 1] == '-') {
+    result.remove(result.length() - 1);
+  }
+  if (result.length() == 0) return String(DEFAULT_MDNS_NAME);
+  return result;
+}
+
+// Strips control characters and enforces the length limit without cutting a
+// multi-byte UTF-8 sequence in half, which would corrupt /api/state.
+String sanitizeDeviceName(const String& value) {
+  String result;
+  result.reserve(value.length() + 1);
+  for (size_t i = 0; i < value.length(); ++i) {
+    const uint8_t c = static_cast<uint8_t>(value[i]);
+    if (c < 0x20 || c == 0x7F) continue;
+    const bool continuation = (c & 0xC0) == 0x80;
+    if (result.length() >= MAX_DEVICE_NAME_LENGTH && !continuation) break;
+    result += static_cast<char>(c);
+  }
+  result.trim();
+  if (result.length() == 0) return String(DEFAULT_DEVICE_NAME);
+  return result;
 }
 
 const char* inputActionName(InputAction action) {
@@ -162,17 +284,14 @@ const char* inputActionName(InputAction action) {
   return "colors";
 }
 
-InputAction parseInputAction(const String& value) {
-  if (value == "power") return InputAction::TogglePower;
-  if (value == "effects") return InputAction::NextEffect;
-  if (value == "previous-effect") return InputAction::PreviousEffect;
-  if (value == "brightness-up") return InputAction::BrightnessUp;
-  if (value == "brightness-down") return InputAction::BrightnessDown;
-  if (value == "warm-white") return InputAction::WarmWhite;
-  if (value == "red") return InputAction::RedScene;
-  if (value == "green") return InputAction::GreenScene;
-  if (value == "blue") return InputAction::BlueScene;
-  return InputAction::CycleColors;
+bool parseInputAction(const String& value, InputAction& out) {
+  for (uint8_t i = 0; i <= static_cast<uint8_t>(InputAction::BlueScene); ++i) {
+    if (value == inputActionName(static_cast<InputAction>(i))) {
+      out = static_cast<InputAction>(i);
+      return true;
+    }
+  }
+  return false;
 }
 
 void markStateChanged() {
@@ -210,11 +329,19 @@ void setBrightness(int value) {
 void loadPreferences() {
   prefs.begin("marine-rgb", true);
 
-  settings.deviceName = prefs.getString("device", DEFAULT_DEVICE_NAME);
-  settings.mdnsName = prefs.getString("mdns", DEFAULT_MDNS_NAME);
+  // Stored values are re-validated here as well. Preferences written by an
+  // older firmware, a manual NVS edit or a partially failed write must never be
+  // able to put the controller into an invalid state.
+  settings.deviceName = sanitizeDeviceName(prefs.getString("device", DEFAULT_DEVICE_NAME));
+  settings.mdnsName = sanitizeHostname(prefs.getString("mdns", DEFAULT_MDNS_NAME));
   settings.ledCount = constrain(prefs.getUShort("leds", DEFAULT_LED_COUNT), 1, MAX_LED_COUNT);
   settings.maxBrightness = constrain(prefs.getUChar("maxb", 100), 1, 100);
-  settings.colorOrder = prefs.getString("order", "BRG");
+
+  settings.colorOrder = DEFAULT_COLOR_ORDER;
+  parseColorOrder(prefs.getString("order", colorOrderName(DEFAULT_COLOR_ORDER)), settings.colorOrder);
+
+  settings.chipset = DEFAULT_LED_CHIPSET;
+  parseLedChipset(prefs.getString("chipset", ledChipsetName(DEFAULT_LED_CHIPSET)), settings.chipset);
   settings.restoreState = prefs.getBool("restore", true);
   settings.smoothTransitions = prefs.getBool("smooth", true);
   settings.warmCompensation = prefs.getBool("warmcomp", true);
@@ -255,7 +382,8 @@ void savePreferences() {
   prefs.putString("mdns", settings.mdnsName);
   prefs.putUShort("leds", settings.ledCount);
   prefs.putUChar("maxb", settings.maxBrightness);
-  prefs.putString("order", settings.colorOrder);
+  prefs.putString("order", colorOrderName(settings.colorOrder));
+  prefs.putString("chipset", ledChipsetName(settings.chipset));
   prefs.putBool("restore", settings.restoreState);
   prefs.putBool("smooth", settings.smoothTransitions);
   prefs.putBool("warmcomp", settings.warmCompensation);
@@ -291,12 +419,44 @@ void configureInputs() {
   configureInput(input2, settings.input2Enabled, DEFAULT_ISO_INPUT_2_PIN);
 }
 
-void configureLedController() {
-  activeLedCount = settings.ledCount;
+// FastLED needs both the chipset and the colour order as compile-time template
+// arguments, so every supported combination has to exist in the binary. The
+// macro keeps that expansion in one place instead of 54 hand-written lines.
+#define PRISM_ADD_LEDS(CHIPSET)                                                                      \
+  switch (settings.colorOrder) {                                                                     \
+    case ColorOrder::RGB: FastLED.addLeds<CHIPSET, LED_DATA_PIN_1, RGB>(leds, activeLedCount); break; \
+    case ColorOrder::RBG: FastLED.addLeds<CHIPSET, LED_DATA_PIN_1, RBG>(leds, activeLedCount); break; \
+    case ColorOrder::GRB: FastLED.addLeds<CHIPSET, LED_DATA_PIN_1, GRB>(leds, activeLedCount); break; \
+    case ColorOrder::GBR: FastLED.addLeds<CHIPSET, LED_DATA_PIN_1, GBR>(leds, activeLedCount); break; \
+    case ColorOrder::BGR: FastLED.addLeds<CHIPSET, LED_DATA_PIN_1, BGR>(leds, activeLedCount); break; \
+    case ColorOrder::BRG:                                                                            \
+    default: FastLED.addLeds<CHIPSET, LED_DATA_PIN_1, BRG>(leds, activeLedCount); break;              \
+  }
 
-  if (settings.colorOrder == "RGB") FastLED.addLeds<WS2811, LED_DATA_PIN_1, RGB>(leds, activeLedCount);
-  else if (settings.colorOrder == "GRB") FastLED.addLeds<WS2811, LED_DATA_PIN_1, GRB>(leds, activeLedCount);
-  else FastLED.addLeds<WS2811, LED_DATA_PIN_1, BRG>(leds, activeLedCount);
+// WS2815 only has its own FastLED template from 3.5.0 onwards. Older releases
+// fall back to WS2812B, which uses a compatible 800 kHz protocol.
+#if defined(FASTLED_VERSION) && FASTLED_VERSION >= 3005000
+  #define PRISM_WS2815_CHIPSET WS2815
+#else
+  #define PRISM_WS2815_CHIPSET WS2812B
+#endif
+
+void configureLedController() {
+  // Re-clamped instead of trusted: activeLedCount indexes a fixed size buffer.
+  activeLedCount = constrain(settings.ledCount, 1, MAX_LED_COUNT);
+
+  switch (settings.chipset) {
+    case LedChipset::WS2812: PRISM_ADD_LEDS(WS2812); break;
+    case LedChipset::WS2812B: PRISM_ADD_LEDS(WS2812B); break;
+    case LedChipset::WS2813: PRISM_ADD_LEDS(WS2813); break;
+    case LedChipset::WS2815: PRISM_ADD_LEDS(PRISM_WS2815_CHIPSET); break;
+    case LedChipset::SK6812: PRISM_ADD_LEDS(SK6812); break;
+    case LedChipset::APA104: PRISM_ADD_LEDS(APA104); break;
+    case LedChipset::UCS1903: PRISM_ADD_LEDS(UCS1903); break;
+    case LedChipset::UCS1903B: PRISM_ADD_LEDS(UCS1903B); break;
+    case LedChipset::WS2811:
+    default: PRISM_ADD_LEDS(WS2811); break;
+  }
 
   FastLED.setDither(true);
   FastLED.setCorrection(TypicalLEDStrip);
@@ -310,35 +470,62 @@ uint16_t effectFrameInterval() {
   return static_cast<uint16_t>(map(state.speed, 1, 100, 80, 10));
 }
 
+// Returns 0..255 describing how much a colour looks like warm white rather than
+// a saturated warm colour (amber) or neutral white.
+//
+// The previous implementation used a hard on/off window on state.r/g/b. That
+// had three problems: the correction snapped in and out as soon as the picker
+// crossed a boundary, saturated amber (255,190,0) fell inside the window and
+// was pulled heavily towards red, and soft white (255,196,135) fell outside it
+// and got no correction at all. The weight below changes gradually instead.
+uint8_t warmWhiteWeight(const CRGB& color) {
+  // A warm mix always runs red >= green >= blue. Green, blue, pink, violet and
+  // turquoise are therefore left completely untouched.
+  if (color.r < color.g || color.g < color.b) return 0;
+  if (color.r < 96) return 0;  // Too dark to judge the mix reliably.
+
+  // How white the mix is, expressed as blue relative to red.
+  // 0 = fully saturated amber, 255 = neutral white.
+  const uint8_t whiteness = static_cast<uint8_t>(
+    (static_cast<uint16_t>(color.b) * 255) / color.r
+  );
+
+  // Ramp in above pure amber and out again before neutral white. The plateau
+  // covers the whole warm-white family, including the 255,128,40 preset
+  // (whiteness 40) and the soft white swatch (whiteness 135).
+  if (whiteness <= 8) return 0;
+  if (whiteness < 38) return static_cast<uint8_t>(map(whiteness, 8, 38, 0, 255));
+  if (whiteness <= 166) return 255;
+  if (whiteness < 217) return static_cast<uint8_t>(map(whiteness, 166, 217, 255, 0));
+  return 0;
+}
+
 CRGB applyWarmCompensation(CRGB color) {
   if (!settings.warmCompensation || state.effect != Effect::Static) return color;
 
-  // The compensation is deliberately limited to the warm-white part of the
-  // colour space. Pure red, yellow, green, blue and neutral white stay intact.
-  // This broader window also catches warm-white shades selected from the wheel,
-  // not only the exact 255,128,40 preset.
-  const bool warmWhiteSelected =
-    state.r >= 200 &&
-    state.g >= 90 && state.g <= 205 &&
-    state.b <= 125 &&
-    state.r > state.g &&
-    state.g > state.b &&
-    (state.r - state.g) >= 25 &&
-    (state.g - state.b) >= 25;
+  // Evaluated on the colour that is actually being displayed, not on the target
+  // colour. The old code tested the destination colour while scaling the
+  // intermediate one, so a fade towards warm white jumped as it started.
+  const uint8_t colorWeight = warmWhiteWeight(color);
+  if (colorWeight == 0) return color;
 
-  if (!warmWhiteSelected || state.brightness <= 20) return color;
-
-  // Compensation increases with brightness because the cold shift is most
-  // visible at high output. At 100%, green is reduced by about 31% and blue
-  // by about 53%, making the difference obvious without changing red.
-  const uint8_t amount = static_cast<uint8_t>(
-    map(state.brightness, 20, 100, 0, 255)
+  // The cold shift is most visible at high output, so the correction still
+  // scales with brightness - but continuously, without the old hard cut-off at
+  // 20% that produced a visible colour step while dimming.
+  const uint8_t brightnessWeight = static_cast<uint8_t>(
+    map(constrain(state.brightness, 1, 100), 1, 100, 0, 255)
   );
+  const uint8_t amount = scale8(brightnessWeight, colorWeight);
+
+  // Unchanged maximum strength: on a full warm white at 100% brightness the
+  // green channel loses about 31% and the blue channel about 53%.
   const uint8_t greenReduction = scale8(80, amount);
   const uint8_t blueReduction = scale8(135, amount);
 
-  color.g = scale8_video(color.g, 255 - greenReduction);
-  color.b = scale8_video(color.b, 255 - blueReduction);
+  // Linear scale8 rather than scale8_video: this is a channel balance, not a
+  // fade, so the +1 bias that keeps dim channels alive is not wanted here.
+  color.g = scale8(color.g, 255 - greenReduction);
+  color.b = scale8(color.b, 255 - blueReduction);
   return color;
 }
 
@@ -432,8 +619,18 @@ void cyclePresetColors() {
 }
 
 void nextEffect(bool reverse = false) {
-  int current = static_cast<int>(state.effect);
   constexpr int effectCount = 5; // Excludes Off from normal cycling.
+
+  // Off sits outside the cycle, so its index must not be fed into the modulo -
+  // that used to jump to Rainbow instead of the first or last effect.
+  if (state.effect == Effect::Off) {
+    state.effect = reverse ? Effect::Sparkle : Effect::Static;
+    state.power = true;
+    markStateChanged();
+    return;
+  }
+
+  int current = static_cast<int>(state.effect);
   current = reverse ? (current - 1 + effectCount) % effectCount : (current + 1) % effectCount;
   state.effect = static_cast<Effect>(current);
   state.power = true;
@@ -502,7 +699,13 @@ void updateInput(DebouncedInput& input, InputAction action) {
     input.lastRaw = raw;
     input.stable = raw;
     input.changedAt = now;
+    input.pressedAt = now;
+    input.lastRepeatAt = now;
     input.initialized = true;
+    // An input that is already active when it is configured must not count as a
+    // fresh press. pressedAt used to stay at 0, so the long-press timer fired
+    // immediately and a latched switch made the light ramp on its own.
+    input.ignoreUntilRelease = (raw == ISO_INPUT_ACTIVE_LEVEL);
     return;
   }
 
@@ -518,11 +721,13 @@ void updateInput(DebouncedInput& input, InputAction action) {
       input.lastRepeatAt = now;
       input.longPressActive = false;
     } else {
-      if (!input.longPressActive) executeShortAction(action);
+      const bool suppressed = input.ignoreUntilRelease;
+      input.ignoreUntilRelease = false;
+      if (!suppressed && !input.longPressActive) executeShortAction(action);
     }
   }
 
-  if (input.stable == ISO_INPUT_ACTIVE_LEVEL) {
+  if (input.stable == ISO_INPUT_ACTIVE_LEVEL && !input.ignoreUntilRelease) {
     if (!input.longPressActive && now - input.pressedAt >= INPUT_LONG_PRESS_MS) {
       input.longPressActive = true;
       input.lastRepeatAt = 0;
@@ -549,7 +754,8 @@ String buildStateJson() {
   json += ",\"mdnsName\":\"" + jsonEscape(settings.mdnsName) + "\"";
   json += ",\"ledCount\":" + String(settings.ledCount);
   json += ",\"maxBrightness\":" + String(settings.maxBrightness);
-  json += ",\"colorOrder\":\"" + settings.colorOrder + "\"";
+  json += ",\"colorOrder\":\"" + String(colorOrderName(settings.colorOrder)) + "\"";
+  json += ",\"ledChipset\":\"" + String(ledChipsetName(settings.chipset)) + "\"";
   json += ",\"restoreState\":" + String(settings.restoreState ? "true" : "false");
   json += ",\"smoothTransitions\":" + String(settings.smoothTransitions ? "true" : "false");
   json += ",\"warmCompensation\":" + String(settings.warmCompensation ? "true" : "false");
@@ -568,8 +774,38 @@ void sendOk() {
   server.send(200, "text/plain", "OK");
 }
 
+// server.arg() returns an empty string for a present-but-empty parameter and
+// String::toInt() turns anything unparsable into 0. Previously "ledCount=" or
+// "maxBrightness=abc" was therefore accepted and silently clamped the setting
+// to its minimum. Unparsable values now count as "not supplied".
+bool argAsInt(const char* name, long& out) {
+  if (!server.hasArg(name)) return false;
+  String value = server.arg(name);
+  value.trim();
+  if (value.length() == 0 || value.length() > 10) return false;
+  size_t i = (value[0] == '-' || value[0] == '+') ? 1 : 0;
+  if (i >= value.length()) return false;
+  for (; i < value.length(); ++i) {
+    if (value[i] < '0' || value[i] > '9') return false;
+  }
+  out = value.toInt();
+  return true;
+}
+
 int argInt(const char* name, int fallback) {
-  return server.hasArg(name) ? server.arg(name).toInt() : fallback;
+  long parsed = 0;
+  return argAsInt(name, parsed) ? static_cast<int>(parsed) : fallback;
+}
+
+bool argBool(const char* name, bool fallback) {
+  long parsed = 0;
+  if (argAsInt(name, parsed)) return parsed != 0;
+  String value = server.arg(name);
+  value.trim();
+  value.toLowerCase();
+  if (value == "true" || value == "on") return true;
+  if (value == "false" || value == "off") return false;
+  return fallback;
 }
 
 void setupRoutes() {
@@ -608,7 +844,7 @@ void setupRoutes() {
   });
 
   server.on("/api/power", HTTP_POST, []() {
-    state.power = argInt("value", state.power ? 1 : 0) != 0;
+    state.power = argBool("value", state.power);
     if (state.power && state.effect == Effect::Off) state.effect = Effect::Static;
     markStateChanged();
     sendOk();
@@ -620,7 +856,12 @@ void setupRoutes() {
   });
 
   server.on("/api/effect", HTTP_POST, []() {
-    state.effect = parseEffect(server.arg("name"));
+    // An unknown or missing name used to fall back to Static, so a malformed
+    // request could switch the light out of the running effect.
+    if (!parseEffect(server.arg("name"), state.effect)) {
+      server.send(400, "text/plain", "Unknown effect");
+      return;
+    }
     state.speed = clampPercent(argInt("speed", state.speed));
     state.intensity = clampPercent(argInt("intensity", state.intensity));
     state.power = state.effect != Effect::Off;
@@ -629,30 +870,31 @@ void setupRoutes() {
   });
 
   server.on("/api/settings", HTTP_POST, []() {
-    String device = server.arg("deviceName");
-    device.trim();
-    if (device.length() > 0) settings.deviceName = device.substring(0, 31);
-
-    String mdns = server.arg("mdnsName");
-    mdns.toLowerCase();
-    mdns.replace(" ", "-");
-    if (mdns.length() > 0) settings.mdnsName = mdns.substring(0, 31);
+    // Every field is optional and every value is validated here. Anything
+    // missing or unrecognised leaves the current setting untouched rather than
+    // resetting it, so a partial or malformed request cannot wipe the config.
+    if (server.hasArg("deviceName")) {
+      settings.deviceName = sanitizeDeviceName(server.arg("deviceName"));
+    }
+    if (server.hasArg("mdnsName")) {
+      settings.mdnsName = sanitizeHostname(server.arg("mdnsName"));
+    }
 
     settings.ledCount = constrain(argInt("ledCount", settings.ledCount), 1, MAX_LED_COUNT);
     settings.maxBrightness = constrain(argInt("maxBrightness", settings.maxBrightness), 1, 100);
 
-    const String order = server.arg("colorOrder");
-    if (order == "RGB" || order == "GRB" || order == "BRG") settings.colorOrder = order;
+    parseColorOrder(server.arg("colorOrder"), settings.colorOrder);
+    parseLedChipset(server.arg("ledChipset"), settings.chipset);
 
-    settings.restoreState = argInt("restoreState", settings.restoreState) != 0;
-    settings.smoothTransitions = argInt("smoothTransitions", settings.smoothTransitions) != 0;
-    settings.warmCompensation = argInt("warmCompensation", settings.warmCompensation) != 0;
+    settings.restoreState = argBool("restoreState", settings.restoreState);
+    settings.smoothTransitions = argBool("smoothTransitions", settings.smoothTransitions);
+    settings.warmCompensation = argBool("warmCompensation", settings.warmCompensation);
     settings.defaultFade = constrain(argInt("defaultFade", settings.defaultFade), 0, 5000);
 
-    settings.input1Enabled = argInt("input1Enabled", settings.input1Enabled) != 0;
-    settings.input2Enabled = argInt("input2Enabled", settings.input2Enabled) != 0;
-    settings.input1Action = parseInputAction(server.arg("input1Action"));
-    settings.input2Action = parseInputAction(server.arg("input2Action"));
+    settings.input1Enabled = argBool("input1Enabled", settings.input1Enabled);
+    settings.input2Enabled = argBool("input2Enabled", settings.input2Enabled);
+    parseInputAction(server.arg("input1Action"), settings.input1Action);
+    parseInputAction(server.arg("input2Action"), settings.input2Action);
 
     configureInputs();
     markStateChanged();
@@ -662,6 +904,9 @@ void setupRoutes() {
 
   server.on("/api/restart", HTTP_POST, []() {
     sendOk();
+    // A state change made less than SETTINGS_SAVE_DELAY_MS before the restart
+    // was still pending and used to be lost.
+    if (stateDirty) savePreferences();
     delay(250);
     ESP.restart();
   });
@@ -725,6 +970,8 @@ void setup() {
   Serial.println();
   Serial.println("Prism RGB Light Controller");
   Serial.printf("Firmware: %s\n", FIRMWARE_VERSION);
+  Serial.printf("LEDs: %u x %s (%s)\n", static_cast<unsigned>(activeLedCount),
+                ledChipsetName(settings.chipset), colorOrderName(settings.colorOrder));
   Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
   Serial.printf("mDNS: http://%s.local\n", settings.mdnsName.c_str());
 }
