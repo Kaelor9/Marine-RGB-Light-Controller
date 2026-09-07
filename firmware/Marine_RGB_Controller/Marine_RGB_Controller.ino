@@ -112,6 +112,13 @@ uint32_t transitionStartedAt = 0;
 uint16_t transitionDuration = 0;
 bool transitionActive = false;
 
+// The web UI sends brightness targets live while the slider is moving. The
+// physical output follows those targets through a short local smoothing stage,
+// so network timing cannot turn a continuous finger gesture into visible steps.
+// Q8 keeps sub-byte precision without using floating point in the render loop.
+uint16_t displayedBrightnessQ8 = 0;
+bool brightnessSmoothingInitialized = false;
+
 uint8_t rainbowOffset = 0;
 uint8_t fadeHue = 0;
 uint32_t lastEffectFrame = 0;
@@ -543,6 +550,40 @@ void renderSparkle() {
   }
 }
 
+uint8_t targetOutputBrightness() {
+  const uint8_t limitedPercent = static_cast<uint8_t>(
+    (static_cast<uint16_t>(state.brightness) * settings.maxBrightness) / 100
+  );
+  return static_cast<uint8_t>(map(limitedPercent, 0, 100, 0, 255));
+}
+
+bool updateBrightnessSmoothing() {
+  const uint16_t targetQ8 = static_cast<uint16_t>(targetOutputBrightness()) << 8;
+
+  if (!brightnessSmoothingInitialized) {
+    displayedBrightnessQ8 = targetQ8;
+    brightnessSmoothingInitialized = true;
+    return true;
+  }
+
+  int32_t delta = static_cast<int32_t>(targetQ8) - displayedBrightnessQ8;
+  if (delta == 0) return false;
+
+  // About one third of the remaining distance per 60 Hz frame. This gives a
+  // quick ~80-120 ms visual settle while still tracking a continuously moving
+  // slider in real time. Keep at least one Q8 step so tiny moves always finish.
+  if (abs(delta) <= 256) {
+    displayedBrightnessQ8 = targetQ8;
+  } else {
+    int32_t step = delta / 3;
+    if (step == 0) step = delta > 0 ? 1 : -1;
+    displayedBrightnessQ8 = static_cast<uint16_t>(
+      static_cast<int32_t>(displayedBrightnessQ8) + step
+    );
+  }
+  return true;
+}
+
 void updateLeds() {
   const uint32_t now = millis();
 
@@ -552,14 +593,18 @@ void updateLeds() {
   // time for Wi-Fi/WebServer work, especially with the 300 LED default.
   const bool animatedEffect =
     state.power && state.effect != Effect::Static && state.effect != Effect::Off;
-  const bool continuousFrames = animatedEffect || transitionActive;
+  const uint16_t brightnessTargetQ8 = static_cast<uint16_t>(targetOutputBrightness()) << 8;
+  const bool brightnessSmoothingActive =
+    !brightnessSmoothingInitialized || displayedBrightnessQ8 != brightnessTargetQ8;
+  const bool continuousFrames = animatedEffect || transitionActive || brightnessSmoothingActive;
 
   if (!outputDirty && !continuousFrames) return;
 
-  // State changes are rendered immediately. Only subsequent animation frames
-  // are rate-limited, which keeps brightness/color controls responsive.
+  // State changes are rendered immediately. Subsequent animation/smoothing
+  // frames run at the normal effect cadence (~60 Hz for static/smoothing).
   if (!outputDirty && now - lastEffectFrame < effectFrameInterval()) return;
   lastEffectFrame = now;
+  updateBrightnessSmoothing();
 
   if (!state.power || state.effect == Effect::Off) {
     transitionActive = false;
@@ -576,10 +621,7 @@ void updateLeds() {
     }
   }
 
-  const uint8_t limitedPercent = static_cast<uint8_t>(
-    (static_cast<uint16_t>(state.brightness) * settings.maxBrightness) / 100
-  );
-  FastLED.setBrightness(map(limitedPercent, 0, 100, 0, 255));
+  FastLED.setBrightness(static_cast<uint8_t>((displayedBrightnessQ8 + 128) >> 8));
   FastLED.show();
   outputDirty = false;
 }
@@ -924,17 +966,89 @@ void setupRoutes() {
   });
 }
 
+static const char PRISM_WIFI_PORTAL_HEAD[] = R"PRISMSETUP(
+<meta name="theme-color" content="#0b1020">
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html{min-height:100%;background:#090d18}
+body{margin:0!important;min-height:100vh;background:
+ radial-gradient(circle at 18% 0%,rgba(128,65,155,.18),transparent 36%),
+ radial-gradient(circle at 90% 10%,rgba(28,135,126,.14),transparent 34%),
+ linear-gradient(180deg,#111625 0%,#090d18 55%,#070b14 100%)!important;
+ color:#f5f7ff!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,Segoe UI,sans-serif!important}
+.wrap{max-width:520px!important;margin:0 auto!important;padding:18px 18px 34px!important}
+h1,h2,h3,h4{color:#f7f8ff!important;letter-spacing:-.02em}
+h1{font-size:25px!important;margin:12px 0 8px!important}
+h2{font-size:18px!important}
+p,label,small,div{color:#aeb7ce}
+a{color:#b8c8ff!important}
+button,.button,input[type=submit]{width:100%!important;min-height:48px!important;border:1px solid rgba(152,166,207,.24)!important;border-radius:15px!important;background:linear-gradient(180deg,#232b43,#192036)!important;color:#fff!important;font-weight:650!important;box-shadow:0 8px 26px rgba(0,0,0,.20)!important;margin:7px 0!important}
+button:hover,.button:hover{background:linear-gradient(180deg,#2a3450,#1e2740)!important}
+input,select{width:100%!important;min-height:48px!important;background:#0f1525!important;color:#fff!important;border:1px solid rgba(152,166,207,.25)!important;border-radius:13px!important;padding:0 14px!important;outline:none!important}
+input:focus,select:focus{border-color:#7e91cf!important;box-shadow:0 0 0 3px rgba(126,145,207,.12)!important}
+.q{border:1px solid rgba(152,166,207,.17)!important;border-radius:14px!important;background:rgba(20,27,45,.82)!important;margin:8px 0!important;padding:12px!important}
+.msg{border:1px solid rgba(152,166,207,.18)!important;border-radius:15px!important;background:rgba(20,27,45,.86)!important;padding:16px!important;color:#c6cee0!important}
+hr{border:0!important;border-top:1px solid rgba(152,166,207,.14)!important}
+.prism-brand{text-align:center;padding:18px 8px 8px}
+.prism-mark{width:54px;height:54px;margin:0 auto 12px;border-radius:18px;background:linear-gradient(135deg,#a767c5,#5c77d6 52%,#43afa3);box-shadow:0 12px 34px rgba(73,82,150,.28);position:relative}
+.prism-mark:after{content:"";position:absolute;inset:12px;border-radius:10px;border:2px solid rgba(255,255,255,.88)}
+.prism-title{font-size:28px;font-weight:750;letter-spacing:-.04em;color:#fff}
+.prism-sub{font-size:13px;color:#8f9bb7;margin-top:4px}
+.prism-foot{text-align:center;color:#66728e;font-size:11px;padding-top:16px}
+@media(max-width:560px){.wrap{padding:12px 14px 30px!important}.prism-brand{padding-top:10px}}
+</style>
+)PRISMSETUP";
+
+static const char PRISM_WIFI_PORTAL_HEADER[] = R"PRISMSETUP(
+<div class="prism-brand">
+  <div class="prism-mark"></div>
+  <div class="prism-title">Prism</div>
+  <div class="prism-sub">RGB Light Controller · Wi-Fi Setup</div>
+</div>
+)PRISMSETUP";
+
+static const char PRISM_WIFI_PORTAL_FOOTER[] = R"PRISMSETUP(
+<div class="prism-foot">Connect Prism to the Wi-Fi network you want to use.</div>
+)PRISMSETUP";
+
+void configureWiFiManagerPortal(WiFiManager& manager) {
+  manager.setTitle("Prism Setup");
+  manager.setCustomHeadElement(PRISM_WIFI_PORTAL_HEAD);
+  manager.setCustomBodyHeader(PRISM_WIFI_PORTAL_HEADER);
+  manager.setCustomBodyFooter(PRISM_WIFI_PORTAL_FOOTER);
+  manager.setShowInfoUpdate(false);
+  manager.setShowInfoErase(false);
+  manager.setRemoveDuplicateAPs(true);
+  manager.setMinimumSignalQuality(8);
+  manager.setWiFiAutoReconnect(true);
+}
+
 void connectWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(settings.mdnsName.c_str());
 
   WiFiManager manager;
+  configureWiFiManagerPortal(manager);
   manager.setConfigPortalTimeout(WIFI_SETUP_TIMEOUT_SECONDS);
   manager.setConnectTimeout(20);
-  manager.setBreakAfterConfig(true);
+  // Do not break out of the captive portal merely because credentials were
+  // submitted. On first setup that can let Prism continue into mDNS/WebServer
+  // startup before the station actually owns an IP address.
+  manager.setBreakAfterConfig(false);
 
   if (!manager.autoConnect(WIFI_SETUP_AP_NAME)) {
     delay(500);
+    ESP.restart();
+  }
+
+  const uint32_t readyStartedAt = millis();
+  while ((WiFi.status() != WL_CONNECTED || WiFi.localIP() == IPAddress(0, 0, 0, 0)) &&
+         millis() - readyStartedAt < 5000) {
+    delay(25);
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    delay(250);
     ESP.restart();
   }
 }

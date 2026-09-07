@@ -977,7 +977,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let state={r:255,g:128,b:40,power:true,brightness:70,effect:"static",speed:50,intensity:65};
 let lastStaticRgb={r:state.r,g:state.g,b:state.b};
 let dragging=false, effectTimer, settingsLoaded=false;
-const LIVE_SEND_INTERVAL_MS=30;
+const LIVE_SEND_INTERVAL_MS=24;
 const liveChannels={
   color:{pending:false,inFlight:false,timer:null,lastSent:0},
   brightness:{pending:false,inFlight:false,timer:null,lastSent:0}
