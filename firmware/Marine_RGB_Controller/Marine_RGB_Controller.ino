@@ -118,6 +118,7 @@ bool transitionActive = false;
 // Q8 keeps sub-byte precision without using floating point in the render loop.
 uint16_t displayedBrightnessQ8 = 0;
 bool brightnessSmoothingInitialized = false;
+uint32_t lastBrightnessSmoothingAt = 0;
 
 uint8_t rainbowOffset = 0;
 uint8_t fadeHue = 0;
@@ -557,26 +558,41 @@ uint8_t targetOutputBrightness() {
   return static_cast<uint8_t>(map(limitedPercent, 0, 100, 0, 255));
 }
 
-bool updateBrightnessSmoothing() {
+bool updateBrightnessSmoothing(uint32_t now) {
   const uint16_t targetQ8 = static_cast<uint16_t>(targetOutputBrightness()) << 8;
 
   if (!brightnessSmoothingInitialized) {
     displayedBrightnessQ8 = targetQ8;
     brightnessSmoothingInitialized = true;
+    lastBrightnessSmoothingAt = now;
     return true;
   }
 
-  int32_t delta = static_cast<int32_t>(targetQ8) - displayedBrightnessQ8;
-  if (delta == 0) return false;
+  const int32_t delta = static_cast<int32_t>(targetQ8) - displayedBrightnessQ8;
+  if (delta == 0) {
+    lastBrightnessSmoothingAt = now;
+    return false;
+  }
 
-  // About one third of the remaining distance per 60 Hz frame. This gives a
-  // quick ~80-120 ms visual settle while still tracking a continuously moving
-  // slider in real time. Keep at least one Q8 step so tiny moves always finish.
-  if (abs(delta) <= 256) {
+  // Time-based exponential tracking. A short ~22 ms time constant keeps the
+  // output tied closely to a finger moving the live slider, while the 120 Hz
+  // render cadence fills the gaps between HTTP updates instead of exposing
+  // them as visible brightness steps. Q8 retains sub-byte precision.
+  uint32_t dt = now - lastBrightnessSmoothingAt;
+  if (dt == 0) dt = 1;
+  if (dt > 40) dt = 40; // Do not jump after a temporary Wi-Fi/main-loop stall.
+  lastBrightnessSmoothingAt = now;
+
+  constexpr uint16_t SMOOTHING_TAU_MS = 22;
+  const uint32_t denominator = SMOOTHING_TAU_MS + dt;
+  int32_t step = static_cast<int32_t>((static_cast<int64_t>(delta) * dt) / denominator);
+
+  // Always make progress, and snap the final sub-byte once it is visually
+  // indistinguishable. This prevents a long numerical tail around the target.
+  if (step == 0) step = delta > 0 ? 1 : -1;
+  if (abs(delta) <= 96 || abs(step) >= abs(delta)) {
     displayedBrightnessQ8 = targetQ8;
   } else {
-    int32_t step = delta / 3;
-    if (step == 0) step = delta > 0 ? 1 : -1;
     displayedBrightnessQ8 = static_cast<uint16_t>(
       static_cast<int32_t>(displayedBrightnessQ8) + step
     );
@@ -600,11 +616,12 @@ void updateLeds() {
 
   if (!outputDirty && !continuousFrames) return;
 
-  // State changes are rendered immediately. Subsequent animation/smoothing
-  // frames run at the normal effect cadence (~60 Hz for static/smoothing).
-  if (!outputDirty && now - lastEffectFrame < effectFrameInterval()) return;
+  // State changes are rendered immediately. Brightness smoothing gets a
+  // dedicated ~120 Hz cadence; effects keep their normal frame interval.
+  const uint16_t frameInterval = brightnessSmoothingActive ? 8 : effectFrameInterval();
+  if (!outputDirty && now - lastEffectFrame < frameInterval) return;
   lastEffectFrame = now;
-  updateBrightnessSmoothing();
+  updateBrightnessSmoothing(now);
 
   if (!state.power || state.effect == Effect::Off) {
     transitionActive = false;
@@ -967,52 +984,109 @@ void setupRoutes() {
 }
 
 static const char PRISM_WIFI_PORTAL_HEAD[] = R"PRISMSETUP(
-<meta name="theme-color" content="#0b1020">
+<meta name="theme-color" content="#111521">
 <style>
-:root{color-scheme:dark}
-*{box-sizing:border-box}
-html{min-height:100%;background:#090d18}
-body{margin:0!important;min-height:100vh;background:
- radial-gradient(circle at 18% 0%,rgba(128,65,155,.18),transparent 36%),
- radial-gradient(circle at 90% 10%,rgba(28,135,126,.14),transparent 34%),
- linear-gradient(180deg,#111625 0%,#090d18 55%,#070b14 100%)!important;
- color:#f5f7ff!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,Segoe UI,sans-serif!important}
-.wrap{max-width:520px!important;margin:0 auto!important;padding:18px 18px 34px!important}
-h1,h2,h3,h4{color:#f7f8ff!important;letter-spacing:-.02em}
-h1{font-size:25px!important;margin:12px 0 8px!important}
-h2{font-size:18px!important}
-p,label,small,div{color:#aeb7ce}
-a{color:#b8c8ff!important}
-button,.button,input[type=submit]{width:100%!important;min-height:48px!important;border:1px solid rgba(152,166,207,.24)!important;border-radius:15px!important;background:linear-gradient(180deg,#232b43,#192036)!important;color:#fff!important;font-weight:650!important;box-shadow:0 8px 26px rgba(0,0,0,.20)!important;margin:7px 0!important}
-button:hover,.button:hover{background:linear-gradient(180deg,#2a3450,#1e2740)!important}
-input,select{width:100%!important;min-height:48px!important;background:#0f1525!important;color:#fff!important;border:1px solid rgba(152,166,207,.25)!important;border-radius:13px!important;padding:0 14px!important;outline:none!important}
-input:focus,select:focus{border-color:#7e91cf!important;box-shadow:0 0 0 3px rgba(126,145,207,.12)!important}
-.q{border:1px solid rgba(152,166,207,.17)!important;border-radius:14px!important;background:rgba(20,27,45,.82)!important;margin:8px 0!important;padding:12px!important}
-.msg{border:1px solid rgba(152,166,207,.18)!important;border-radius:15px!important;background:rgba(20,27,45,.86)!important;padding:16px!important;color:#c6cee0!important}
-hr{border:0!important;border-top:1px solid rgba(152,166,207,.14)!important}
-.prism-brand{text-align:center;padding:18px 8px 8px}
-.prism-mark{width:54px;height:54px;margin:0 auto 12px;border-radius:18px;background:linear-gradient(135deg,#a767c5,#5c77d6 52%,#43afa3);box-shadow:0 12px 34px rgba(73,82,150,.28);position:relative}
-.prism-mark:after{content:"";position:absolute;inset:12px;border-radius:10px;border:2px solid rgba(255,255,255,.88)}
-.prism-title{font-size:28px;font-weight:750;letter-spacing:-.04em;color:#fff}
-.prism-sub{font-size:13px;color:#8f9bb7;margin-top:4px}
-.prism-foot{text-align:center;color:#66728e;font-size:11px;padding-top:16px}
-@media(max-width:560px){.wrap{padding:12px 14px 30px!important}.prism-brand{padding-top:10px}}
+:root{
+  color-scheme:dark;
+  --bg:#090b10;
+  --panel:#121721;
+  --line:rgba(255,255,255,.09);
+  --text:#f5f7fa;
+  --muted:#929cac;
+  --soft:#667182;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{
+  min-height:100%;
+  background-color:#111521!important;
+  background-image:
+    radial-gradient(ellipse 105% 42% at 50% -8%,rgba(91,101,148,.145),transparent 72%),
+    radial-gradient(circle at 10% 5%,rgba(220,45,160,.080),transparent 30%),
+    radial-gradient(circle at 48% 2%,rgba(255,135,38,.064),transparent 29%),
+    radial-gradient(circle at 91% 6%,rgba(52,220,90,.064),transparent 30%),
+    radial-gradient(circle at 94% 48%,rgba(0,205,220,.058),transparent 31%),
+    radial-gradient(circle at 48% 76%,rgba(35,92,255,.060),transparent 35%),
+    radial-gradient(circle at 4% 52%,rgba(126,48,225,.070),transparent 31%),
+    linear-gradient(180deg,#111521 0%,#0b1018 30%,#0b1018 100%)!important;
+  background-repeat:no-repeat!important;
+  background-size:100vw 100vh!important;
+  background-attachment:fixed!important
+}
+body{
+  margin:0!important;
+  min-height:100vh!important;
+  color:var(--text)!important;
+  background:transparent!important;
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important
+}
+.wrap{
+  width:min(calc(100% - 32px),420px)!important;
+  max-width:420px!important;
+  margin:0 auto!important;
+  padding:34px 0 40px!important
+}
+h1{
+  margin:0 0 18px!important;
+  color:var(--text)!important;
+  font-size:26px!important;
+  font-weight:750!important;
+  letter-spacing:-.035em!important
+}
+h2,h3,h4{color:var(--text)!important}
+p,label,small{color:var(--muted)!important}
+a{color:#d6dcff!important}
+form,.msg{
+  border:1px solid var(--line)!important;
+  border-radius:24px!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),rgba(16,21,30,.86)!important;
+  box-shadow:0 26px 80px rgba(0,0,0,.28)!important;
+  padding:18px!important
+}
+.q{
+  border:1px solid var(--line)!important;
+  border-radius:16px!important;
+  background:rgba(18,23,33,.88)!important;
+  margin:8px 0!important;
+  padding:12px 14px!important
+}
+input,select{
+  width:100%!important;
+  min-height:48px!important;
+  padding:0 14px!important;
+  border:1px solid var(--line)!important;
+  border-radius:16px!important;
+  outline:none!important;
+  color:var(--text)!important;
+  background:#121721!important;
+  font:inherit!important
+}
+input:focus,select:focus{
+  border-color:rgba(255,255,255,.22)!important;
+  box-shadow:0 0 0 3px rgba(255,255,255,.055)!important
+}
+button,.button,input[type=submit]{
+  width:100%!important;
+  min-height:48px!important;
+  margin:8px 0!important;
+  border:1px solid var(--line)!important;
+  border-radius:16px!important;
+  background:#f6f7f9!important;
+  color:#10141b!important;
+  font:inherit!important;
+  font-weight:750!important;
+  box-shadow:none!important
+}
+button:hover,.button:hover,input[type=submit]:hover{background:#fff!important}
+hr{border:0!important;border-top:1px solid var(--line)!important}
+@media(max-width:480px){
+  .wrap{width:min(calc(100% - 28px),420px)!important;padding-top:24px!important}
+  h1{font-size:24px!important}
+}
 </style>
-<script>
-document.addEventListener('DOMContentLoaded',function(){
-  var wrap=document.querySelector('.wrap')||document.body;
-  if(!document.querySelector('.prism-brand')){
-    wrap.insertAdjacentHTML('afterbegin','<div class="prism-brand"><div class="prism-mark"></div><div class="prism-title">Prism</div><div class="prism-sub">RGB Light Controller · Wi-Fi Setup</div></div>');
-  }
-  if(!document.querySelector('.prism-foot')){
-    wrap.insertAdjacentHTML('beforeend','<div class="prism-foot">Connect Prism to the Wi-Fi network you want to use.</div>');
-  }
-});
-</script>
 )PRISMSETUP";
 
 void configureWiFiManagerPortal(WiFiManager& manager) {
-  manager.setTitle("Prism Setup");
+  manager.setTitle("Prism Wi-Fi Setup");
   manager.setCustomHeadElement(PRISM_WIFI_PORTAL_HEAD);
   manager.setShowInfoUpdate(false);
   manager.setShowInfoErase(false);
