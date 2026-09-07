@@ -1226,6 +1226,17 @@ void configureWiFiManagerPortal(WiFiManager& manager) {
   manager.setRemoveDuplicateAPs(true);
   manager.setMinimumSignalQuality(8);
   manager.setWiFiAutoReconnect(true);
+
+  // Make the provisioning portal deterministic for phones/tablets.  These
+  // calls are supported by WiFiManager 2.0.17 (the version used by Prism's
+  // current build) and explicitly keep captive-portal redirection enabled.
+  manager.setEnableConfigPortal(true);
+  manager.setCaptivePortalEnable(true);
+
+  // Do not let the config-portal timeout expire while a phone is attached to
+  // the SoftAP, and refresh the timeout whenever the portal is actively used.
+  manager.setAPClientCheck(true);
+  manager.setWebPortalClientCheck(true);
 }
 
 void connectWiFi() {
@@ -1235,7 +1246,8 @@ void connectWiFi() {
   WiFiManager manager;
   configureWiFiManagerPortal(manager);
   manager.setConfigPortalTimeout(WIFI_SETUP_TIMEOUT_SECONDS);
-  manager.setConnectTimeout(20);
+  manager.setConnectTimeout(10);
+  manager.setSaveConnectTimeout(10);
   // Do not break out of the captive portal merely because credentials were
   // submitted. On first setup that can let Prism continue into mDNS/WebServer
   // startup before the station actually owns an IP address.
