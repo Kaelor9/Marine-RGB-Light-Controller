@@ -998,25 +998,22 @@ hr{border:0!important;border-top:1px solid rgba(152,166,207,.14)!important}
 .prism-foot{text-align:center;color:#66728e;font-size:11px;padding-top:16px}
 @media(max-width:560px){.wrap{padding:12px 14px 30px!important}.prism-brand{padding-top:10px}}
 </style>
-)PRISMSETUP";
-
-static const char PRISM_WIFI_PORTAL_HEADER[] = R"PRISMSETUP(
-<div class="prism-brand">
-  <div class="prism-mark"></div>
-  <div class="prism-title">Prism</div>
-  <div class="prism-sub">RGB Light Controller · Wi-Fi Setup</div>
-</div>
-)PRISMSETUP";
-
-static const char PRISM_WIFI_PORTAL_FOOTER[] = R"PRISMSETUP(
-<div class="prism-foot">Connect Prism to the Wi-Fi network you want to use.</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  var wrap=document.querySelector('.wrap')||document.body;
+  if(!document.querySelector('.prism-brand')){
+    wrap.insertAdjacentHTML('afterbegin','<div class="prism-brand"><div class="prism-mark"></div><div class="prism-title">Prism</div><div class="prism-sub">RGB Light Controller · Wi-Fi Setup</div></div>');
+  }
+  if(!document.querySelector('.prism-foot')){
+    wrap.insertAdjacentHTML('beforeend','<div class="prism-foot">Connect Prism to the Wi-Fi network you want to use.</div>');
+  }
+});
+</script>
 )PRISMSETUP";
 
 void configureWiFiManagerPortal(WiFiManager& manager) {
   manager.setTitle("Prism Setup");
   manager.setCustomHeadElement(PRISM_WIFI_PORTAL_HEAD);
-  manager.setCustomBodyHeader(PRISM_WIFI_PORTAL_HEADER);
-  manager.setCustomBodyFooter(PRISM_WIFI_PORTAL_FOOTER);
   manager.setShowInfoUpdate(false);
   manager.setShowInfoErase(false);
   manager.setRemoveDuplicateAPs(true);
