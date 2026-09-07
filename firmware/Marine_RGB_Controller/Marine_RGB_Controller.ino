@@ -1077,7 +1077,10 @@ a{color:var(--text)!important;text-decoration:none!important}
   line-height:1.25!important;
   font-weight:650!important;
 }
-.prism-network-row>.q{
+.prism-network-row>.q:not([role=img]){
+  display:none!important;
+}
+.prism-network-row>.q[role=img]{
   position:absolute!important;
   right:8px!important;
   top:50%!important;
@@ -1087,8 +1090,8 @@ a{color:var(--text)!important;text-decoration:none!important}
   align-items:center!important;
   justify-content:flex-end!important;
   gap:7px!important;
-  width:42px!important;
-  min-width:42px!important;
+  width:48px!important;
+  min-width:48px!important;
   height:24px!important;
   margin:0!important;
   padding:0!important;
@@ -1098,7 +1101,7 @@ a{color:var(--text)!important;text-decoration:none!important}
   filter:none!important;
 }
 /* Disable WiFiManager's black sprite entirely; our indicator is pure CSS. */
-.prism-network-row>.q:before,.prism-network-row>.q:after{display:none!important;background:none!important}
+.prism-network-row>.q[role=img]:before,.prism-network-row>.q[role=img]:after{display:none!important;background:none!important}
 .prism-signal{
   width:24px;height:17px;display:flex;align-items:flex-end;justify-content:flex-end;gap:2px;
 }
@@ -1114,12 +1117,27 @@ a{color:var(--text)!important;text-decoration:none!important}
 .q-3 .prism-signal i:nth-child(-n+3){opacity:1}
 .q-4 .prism-signal i{opacity:1}
 .prism-lock{
-  position:relative;display:none;width:9px;height:8px;border:1.7px solid #cdd4de;border-radius:2px;opacity:.82;
+  position:relative;
+  display:none;
+  width:11px;
+  height:9px;
+  flex:0 0 11px;
+  border:1.6px solid #dfe5ec;
+  border-radius:2.5px;
+  opacity:.92;
 }
 .q.l .prism-lock{display:block}
 .prism-lock:before{
-  content:"";position:absolute;left:1px;top:-6px;width:5px;height:6px;border:1.7px solid #cdd4de;
-  border-bottom:0;border-radius:5px 5px 0 0;
+  content:"";
+  position:absolute;
+  left:50%;
+  top:-7px;
+  width:7px;
+  height:7px;
+  transform:translateX(-50%);
+  border:1.6px solid #dfe5ec;
+  border-bottom:0;
+  border-radius:6px 6px 0 0;
 }
 
 form,.msg{
@@ -1203,7 +1221,11 @@ document.addEventListener('DOMContentLoaded',function(){
     if(!row)return;
     row.classList.add('prism-network-row');
     var q=row.querySelector('.q[role=img]');
+    row.querySelectorAll('.q:not([role=img])').forEach(function(percent){
+      percent.remove();
+    });
     if(q){
+      q.textContent='';
       q.innerHTML='<span class="prism-lock" aria-hidden="true"></span><span class="prism-signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
     }
     rows.push(row);
@@ -1233,10 +1255,10 @@ void configureWiFiManagerPortal(WiFiManager& manager) {
   manager.setEnableConfigPortal(true);
   manager.setCaptivePortalEnable(true);
 
-  // Do not let the config-portal timeout expire while a phone is attached to
-  // the SoftAP, and refresh the timeout whenever the portal is actively used.
-  manager.setAPClientCheck(true);
-  manager.setWebPortalClientCheck(true);
+  // Keep WiFiManager's normal captive-portal lifecycle. In particular, do
+  // not enable APClientCheck/WebPortalClientCheck here: on iOS those checks
+  // can interfere with the normal captive-network probe that triggers the
+  // automatic "Captive Wi-Fi" sheet after joining Prism Setup.
 }
 
 void connectWiFi() {
