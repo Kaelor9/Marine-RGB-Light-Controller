@@ -29,4 +29,4 @@ constexpr uint32_t SETTINGS_SAVE_DELAY_MS = 900;
 // Single source of truth for the version. The web interface in WebUi.h is
 // compiled into this firmware, so it reports this value instead of carrying a
 // version string of its own. Keep site/manifest.json in sync when releasing.
-constexpr char FIRMWARE_VERSION[] = "0.5.3";
+constexpr char FIRMWARE_VERSION[] = "0.5.4";

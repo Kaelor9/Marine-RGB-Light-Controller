@@ -584,7 +584,7 @@ bool updateBrightnessSmoothing(uint32_t now) {
   if (dt > 40) dt = 40; // Do not jump after a temporary Wi-Fi/main-loop stall.
   lastBrightnessSmoothingAt = now;
 
-  constexpr uint16_t SMOOTHING_TAU_MS = 45;
+  constexpr uint16_t SMOOTHING_TAU_MS = 55;
   const uint32_t denominator = SMOOTHING_TAU_MS + dt;
   int32_t step = static_cast<int32_t>((static_cast<int64_t>(delta) * dt) / denominator);
 
@@ -619,7 +619,7 @@ void updateLeds() {
 
   // State changes are rendered immediately. Brightness smoothing gets a
   // dedicated ~100 Hz cadence; effects keep their normal frame interval.
-  const uint16_t frameInterval = brightnessSmoothingActive ? 10 : effectFrameInterval();
+  const uint16_t frameInterval = brightnessSmoothingActive ? 8 : effectFrameInterval();
   if (!outputDirty && now - lastEffectFrame < frameInterval) return;
   lastEffectFrame = now;
   updateBrightnessSmoothing(now);
@@ -1037,18 +1037,35 @@ h2,h3,h4{color:var(--text)!important}
 p,label,small{color:var(--muted)!important}
 a{color:var(--text)!important;text-decoration:none!important}
 
-/* WiFi scan rows. WiFiManager emits each AP as a plain div containing the
-   SSID link and RSSI icon. JS below marks those divs as .prism-network-row. */
+/* WiFi scan list. WiFiManager emits each AP as a plain div containing the
+   SSID link and RSSI element. JavaScript below groups those rows into a
+   bounded, scrollable list and replaces WiFiManager's sprite icon with a
+   small Prism-native signal indicator. */
+.prism-network-list{
+  margin:0 0 18px!important;
+  padding:0!important;
+  max-height:min(42vh,340px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  border-top:1px solid rgba(255,255,255,.055)!important;
+  border-bottom:1px solid rgba(255,255,255,.055)!important;
+  scrollbar-width:thin!important;
+  scrollbar-color:rgba(255,255,255,.18) transparent!important;
+}
+.prism-network-list::-webkit-scrollbar{width:5px}
+.prism-network-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:10px}
 .prism-network-row{
   position:relative!important;
   display:flex!important;
   align-items:center!important;
-  min-height:52px!important;
+  min-height:54px!important;
   margin:0!important;
-  padding:0 62px 0 8px!important;
+  padding:0 58px 0 8px!important;
   border-bottom:1px solid rgba(255,255,255,.055)!important;
 }
-.prism-network-row:last-of-type{border-bottom:0!important}
+.prism-network-row:last-child{border-bottom:0!important}
 .prism-network-row>a[data-ssid]{
   display:block!important;
   min-width:0!important;
@@ -1066,18 +1083,44 @@ a{color:var(--text)!important;text-decoration:none!important}
   top:50%!important;
   transform:translateY(-50%)!important;
   float:none!important;
-  width:46px!important;
-  min-width:46px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:7px!important;
+  width:42px!important;
+  min-width:42px!important;
   height:24px!important;
   margin:0!important;
-  padding:4px 5px!important;
-  border:1px solid var(--line)!important;
-  border-radius:12px!important;
-  background:rgba(18,23,33,.84)!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  filter:none!important;
 }
-/* WiFiManager's signal/lock sprite is black by default. Invert the icon only,
-   not the row or text, so it remains readable on Prism's dark background. */
-.prism-network-row>.q[role=img]{filter:invert(1) brightness(1.65)!important}
+/* Disable WiFiManager's black sprite entirely; our indicator is pure CSS. */
+.prism-network-row>.q:before,.prism-network-row>.q:after{display:none!important;background:none!important}
+.prism-signal{
+  width:24px;height:17px;display:flex;align-items:flex-end;justify-content:flex-end;gap:2px;
+}
+.prism-signal i{
+  display:block;width:3px;border-radius:2px 2px 1px 1px;background:#edf1f6;opacity:.22;
+}
+.prism-signal i:nth-child(1){height:5px}
+.prism-signal i:nth-child(2){height:8px}
+.prism-signal i:nth-child(3){height:12px}
+.prism-signal i:nth-child(4){height:16px}
+.q-1 .prism-signal i:nth-child(1){opacity:1}
+.q-2 .prism-signal i:nth-child(-n+2){opacity:1}
+.q-3 .prism-signal i:nth-child(-n+3){opacity:1}
+.q-4 .prism-signal i{opacity:1}
+.prism-lock{
+  position:relative;display:none;width:9px;height:8px;border:1.7px solid #cdd4de;border-radius:2px;opacity:.82;
+}
+.q.l .prism-lock{display:block}
+.prism-lock:before{
+  content:"";position:absolute;left:1px;top:-6px;width:5px;height:6px;border:1.7px solid #cdd4de;
+  border-bottom:0;border-radius:5px 5px 0 0;
+}
 
 form,.msg{
   border:1px solid var(--line)!important;
@@ -1154,9 +1197,23 @@ hr{border:0!important;border-top:1px solid var(--line)!important}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
+  var rows=[];
   document.querySelectorAll('a[data-ssid]').forEach(function(link){
-    if(link.parentElement) link.parentElement.classList.add('prism-network-row');
+    var row=link.parentElement;
+    if(!row)return;
+    row.classList.add('prism-network-row');
+    var q=row.querySelector('.q[role=img]');
+    if(q){
+      q.innerHTML='<span class="prism-lock" aria-hidden="true"></span><span class="prism-signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
+    }
+    rows.push(row);
   });
+  if(rows.length){
+    var list=document.createElement('div');
+    list.className='prism-network-list';
+    rows[0].parentNode.insertBefore(list,rows[0]);
+    rows.forEach(function(row){list.appendChild(row)});
+  }
 });
 </script>
 )PRISMSETUP";
