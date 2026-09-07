@@ -101,6 +101,7 @@ DebouncedInput input1;
 DebouncedInput input2;
 
 bool stateDirty = false;
+bool outputDirty = true;
 uint32_t stateDirtyAt = 0;
 uint32_t stateVersion = 1;
 
@@ -297,6 +298,7 @@ bool parseInputAction(const String& value, InputAction& out) {
 void markStateChanged() {
   ++stateVersion;
   stateDirty = true;
+  outputDirty = true;
   stateDirtyAt = millis();
 }
 
@@ -433,14 +435,6 @@ void configureInputs() {
     default: FastLED.addLeds<CHIPSET, LED_DATA_PIN_1, BRG>(leds, activeLedCount); break;              \
   }
 
-// WS2815 only has its own FastLED template from 3.5.0 onwards. Older releases
-// fall back to WS2812B, which uses a compatible 800 kHz protocol.
-#if defined(FASTLED_VERSION) && FASTLED_VERSION >= 3005000
-  #define PRISM_WS2815_CHIPSET WS2815
-#else
-  #define PRISM_WS2815_CHIPSET WS2812B
-#endif
-
 void configureLedController() {
   // Re-clamped instead of trusted: activeLedCount indexes a fixed size buffer.
   activeLedCount = constrain(settings.ledCount, 1, MAX_LED_COUNT);
@@ -449,7 +443,7 @@ void configureLedController() {
     case LedChipset::WS2812: PRISM_ADD_LEDS(WS2812); break;
     case LedChipset::WS2812B: PRISM_ADD_LEDS(WS2812B); break;
     case LedChipset::WS2813: PRISM_ADD_LEDS(WS2813); break;
-    case LedChipset::WS2815: PRISM_ADD_LEDS(PRISM_WS2815_CHIPSET); break;
+    case LedChipset::WS2815: PRISM_ADD_LEDS(WS2815); break;
     case LedChipset::SK6812: PRISM_ADD_LEDS(SK6812); break;
     case LedChipset::APA104: PRISM_ADD_LEDS(APA104); break;
     case LedChipset::UCS1903: PRISM_ADD_LEDS(UCS1903); break;
@@ -470,62 +464,32 @@ uint16_t effectFrameInterval() {
   return static_cast<uint16_t>(map(state.speed, 1, 100, 80, 10));
 }
 
-// Returns 0..255 describing how much a colour looks like warm white rather than
-// a saturated warm colour (amber) or neutral white.
-//
-// The previous implementation used a hard on/off window on state.r/g/b. That
-// had three problems: the correction snapped in and out as soon as the picker
-// crossed a boundary, saturated amber (255,190,0) fell inside the window and
-// was pulled heavily towards red, and soft white (255,196,135) fell outside it
-// and got no correction at all. The weight below changes gradually instead.
-uint8_t warmWhiteWeight(const CRGB& color) {
-  // A warm mix always runs red >= green >= blue. Green, blue, pink, violet and
-  // turquoise are therefore left completely untouched.
-  if (color.r < color.g || color.g < color.b) return 0;
-  if (color.r < 96) return 0;  // Too dark to judge the mix reliably.
-
-  // How white the mix is, expressed as blue relative to red.
-  // 0 = fully saturated amber, 255 = neutral white.
-  const uint8_t whiteness = static_cast<uint8_t>(
-    (static_cast<uint16_t>(color.b) * 255) / color.r
-  );
-
-  // Ramp in above pure amber and out again before neutral white. The plateau
-  // covers the whole warm-white family, including the 255,128,40 preset
-  // (whiteness 40) and the soft white swatch (whiteness 135).
-  if (whiteness <= 8) return 0;
-  if (whiteness < 38) return static_cast<uint8_t>(map(whiteness, 8, 38, 0, 255));
-  if (whiteness <= 166) return 255;
-  if (whiteness < 217) return static_cast<uint8_t>(map(whiteness, 166, 217, 255, 0));
-  return 0;
-}
-
 CRGB applyWarmCompensation(CRGB color) {
   if (!settings.warmCompensation || state.effect != Effect::Static) return color;
 
-  // Evaluated on the colour that is actually being displayed, not on the target
-  // colour. The old code tested the destination colour while scaling the
-  // intermediate one, so a fade towards warm white jumped as it started.
-  const uint8_t colorWeight = warmWhiteWeight(color);
-  if (colorWeight == 0) return color;
+  // Keep the original conservative compensation window. It intentionally only
+  // affects the established warm-white region, so ordinary red/orange/yellow
+  // wheel colours are not re-balanced unexpectedly. Broader calibration should
+  // be done against the physical LED strip rather than guessed in firmware.
+  const bool warmWhiteSelected =
+    state.r >= 200 &&
+    state.g >= 90 && state.g <= 205 &&
+    state.b <= 125 &&
+    state.r > state.g &&
+    state.g > state.b &&
+    (state.r - state.g) >= 25 &&
+    (state.g - state.b) >= 25;
 
-  // The cold shift is most visible at high output, so the correction still
-  // scales with brightness - but continuously, without the old hard cut-off at
-  // 20% that produced a visible colour step while dimming.
-  const uint8_t brightnessWeight = static_cast<uint8_t>(
-    map(constrain(state.brightness, 1, 100), 1, 100, 0, 255)
+  if (!warmWhiteSelected || state.brightness <= 20) return color;
+
+  const uint8_t amount = static_cast<uint8_t>(
+    map(state.brightness, 20, 100, 0, 255)
   );
-  const uint8_t amount = scale8(brightnessWeight, colorWeight);
-
-  // Unchanged maximum strength: on a full warm white at 100% brightness the
-  // green channel loses about 31% and the blue channel about 53%.
   const uint8_t greenReduction = scale8(80, amount);
   const uint8_t blueReduction = scale8(135, amount);
 
-  // Linear scale8 rather than scale8_video: this is a channel balance, not a
-  // fade, so the +1 bias that keeps dim channels alive is not wanted here.
-  color.g = scale8(color.g, 255 - greenReduction);
-  color.b = scale8(color.b, 255 - blueReduction);
+  color.g = scale8_video(color.g, 255 - greenReduction);
+  color.b = scale8_video(color.b, 255 - blueReduction);
   return color;
 }
 
@@ -581,7 +545,20 @@ void renderSparkle() {
 
 void updateLeds() {
   const uint32_t now = millis();
-  if (now - lastEffectFrame < effectFrameInterval()) return;
+
+  // Animated effects and active colour transitions need a continuous frame
+  // cadence. A settled static colour does not: addressable LEDs hold their last
+  // frame themselves. Avoiding redundant FastLED.show() calls leaves much more
+  // time for Wi-Fi/WebServer work, especially with the 300 LED default.
+  const bool animatedEffect =
+    state.power && state.effect != Effect::Static && state.effect != Effect::Off;
+  const bool continuousFrames = animatedEffect || transitionActive;
+
+  if (!outputDirty && !continuousFrames) return;
+
+  // State changes are rendered immediately. Only subsequent animation frames
+  // are rate-limited, which keeps brightness/color controls responsive.
+  if (!outputDirty && now - lastEffectFrame < effectFrameInterval()) return;
   lastEffectFrame = now;
 
   if (!state.power || state.effect == Effect::Off) {
@@ -604,6 +581,7 @@ void updateLeds() {
   );
   FastLED.setBrightness(map(limitedPercent, 0, 100, 0, 255));
   FastLED.show();
+  outputDirty = false;
 }
 
 void cyclePresetColors() {
@@ -809,10 +787,21 @@ bool argBool(const char* name, bool fallback) {
 }
 
 void setupRoutes() {
+  // Keep the large embedded UI cacheable. A normal refresh can then validate a
+  // tiny ETag instead of downloading the full ~300 kB page again. The ETag is
+  // tied to the firmware version, so a firmware update automatically invalidates
+  // the cached UI. WebServer only exposes request headers that are collected.
+  const char* headerKeys[] = {"If-None-Match"};
+  server.collectHeaders(headerKeys, 1);
+
   server.on("/", HTTP_GET, []() {
-    server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-    server.sendHeader("Pragma", "no-cache");
-    server.sendHeader("Expires", "0");
+    const String etag = String("\"") + FIRMWARE_VERSION + "\"";
+    server.sendHeader("ETag", etag);
+    server.sendHeader("Cache-Control", "private, no-cache");
+    if (server.hasHeader("If-None-Match") && server.header("If-None-Match") == etag) {
+      server.send(304, "text/plain", "");
+      return;
+    }
     server.send_P(200, "text/html; charset=utf-8", INDEX_HTML);
   });
 

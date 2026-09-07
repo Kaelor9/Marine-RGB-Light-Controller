@@ -948,7 +948,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 
           <div class="form-section">
             <div class="section-name">Network</div>
-            <div class="row"><label><strong>mDNS hostname</strong><span>Available as hostname.local.</span></label><input class="field" id="mdnsName" maxlength="31"></div>
+            <div class="row"><label><strong>mDNS hostname</strong><span>Available as hostname.local.</span></label><input class="field" id="mdnsName" maxlength="24"></div>
           </div>
 
           <div class="form-section">
@@ -976,7 +976,12 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let state={r:255,g:128,b:40,power:true,brightness:70,effect:"static",speed:50,intensity:65};
 let lastStaticRgb={r:state.r,g:state.g,b:state.b};
-let dragging=false, colorTimer, brightnessTimer, effectTimer, settingsLoaded=false;
+let dragging=false, effectTimer, settingsLoaded=false;
+const LIVE_SEND_INTERVAL_MS=30;
+const liveChannels={
+  color:{pending:false,inFlight:false,timer:null,lastSent:0},
+  brightness:{pending:false,inFlight:false,timer:null,lastSent:0}
+};
 // Guards against the /api/state poll overwriting a control that is being used
 // right now, and against overlapping polls when the controller is slow.
 let interactionUntil=0, loadInFlight=false, lastErrorToast=0;
@@ -1016,7 +1021,9 @@ const actionHelp={
 function toast(text){const t=$("#toast");t.textContent=text;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1700)}
 function form(data){return new URLSearchParams(data).toString()}
 async function api(path,data){
-  const opt=data?{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form(data)}:{};
+  const opt=data
+    ?{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form(data),cache:"no-store"}
+    :{cache:"no-store"};
   const r=await fetch(path,opt);if(!r.ok)throw new Error(await r.text());
   return r.headers.get("content-type")?.includes("json")?r.json():r.text()
 }
@@ -1170,16 +1177,37 @@ function send(path,data,message){
   markInteraction();
   return api(path,data).catch(err=>{console.error(path,err);reportFailure(message)})
 }
-function scheduleColor(){
-  markInteraction();
-  clearTimeout(colorTimer);
-  colorTimer=setTimeout(()=>send("/api/color",{r:state.r,g:state.g,b:state.b,power:1},"Color was not applied"),55)
+function flushLiveChannel(name){
+  const ch=liveChannels[name];
+  if(!ch||ch.inFlight||!ch.pending)return;
+
+  const now=performance.now();
+  const wait=Math.max(0,LIVE_SEND_INTERVAL_MS-(now-ch.lastSent));
+  if(wait>0){
+    if(!ch.timer)ch.timer=setTimeout(()=>{ch.timer=null;flushLiveChannel(name)},wait);
+    return
+  }
+
+  ch.pending=false;
+  ch.inFlight=true;
+  ch.lastSent=performance.now();
+  const request=name==="color"
+    ?send("/api/color",{r:state.r,g:state.g,b:state.b,power:1},"Color was not applied")
+    :send("/api/brightness",{value:state.brightness},"Brightness was not applied");
+
+  Promise.resolve(request).finally(()=>{
+    ch.inFlight=false;
+    if(ch.pending)flushLiveChannel(name)
+  })
 }
-function scheduleBrightness(){
+function queueLiveChannel(name){
   markInteraction();
-  clearTimeout(brightnessTimer);
-  brightnessTimer=setTimeout(()=>send("/api/brightness",{value:state.brightness},"Brightness was not applied"),70)
+  const ch=liveChannels[name];
+  ch.pending=true;
+  flushLiveChannel(name)
 }
+function scheduleColor(){queueLiveChannel("color")}
+function scheduleBrightness(){queueLiveChannel("brightness")}
 function scheduleEffect(){
   markInteraction();
   clearTimeout(effectTimer);
@@ -1238,6 +1266,7 @@ wheelCanvas.addEventListener("pointerup",stopWheelDrag);
 wheelCanvas.addEventListener("pointercancel",stopWheelDrag);
 wheelCanvas.addEventListener("lostpointercapture",stopWheelDrag);
 $("#brightness").oninput=e=>{state.brightness=+e.target.value;render();scheduleBrightness()};
+$("#brightness").onchange=()=>scheduleBrightness();
 $("#speed").oninput=e=>{state.speed=+e.target.value;render();scheduleEffect()};
 $("#intensity").oninput=e=>{state.intensity=+e.target.value;render();scheduleEffect()};
 $("#powerBtn").onclick=()=>{state.power=!state.power;render();send("/api/power",{value:state.power?1:0},"Power was not applied")};
@@ -1352,7 +1381,13 @@ function refreshWheel(){
 updateInterfacePreferences();
 drawWheel();
 addEventListener("resize",refreshWheel);
-setInterval(()=>{if(!dragging)load(false)},900);
+setInterval(()=>{
+  if(document.visibilityState!=="visible"||dragging||Date.now()<=interactionUntil)return;
+  load(false)
+},2000);
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible")load(false)
+});
 load(true);
 </script>
 </body>

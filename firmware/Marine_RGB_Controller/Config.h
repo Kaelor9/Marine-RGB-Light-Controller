@@ -8,11 +8,11 @@ constexpr int8_t DEFAULT_ISO_INPUT_2_PIN = 39;
 
 constexpr uint8_t ISO_INPUT_ACTIVE_LEVEL = HIGH;
 
-constexpr uint16_t DEFAULT_LED_COUNT = 27;
+constexpr uint16_t DEFAULT_LED_COUNT = 300;
 constexpr uint16_t MAX_LED_COUNT = 300;
 
 constexpr char DEFAULT_DEVICE_NAME[] = "Prism";
-constexpr char DEFAULT_MDNS_NAME[] = "rgb";
+constexpr char DEFAULT_MDNS_NAME[] = "prism";
 constexpr char WIFI_SETUP_AP_NAME[] = "Prism Setup";
 
 constexpr uint8_t MAX_DEVICE_NAME_LENGTH = 31;
