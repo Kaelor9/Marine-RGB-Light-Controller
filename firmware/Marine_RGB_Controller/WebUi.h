@@ -222,8 +222,28 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       filter:blur(31px);opacity:.34
     }
     #hueWheel{
-      display:block;width:100%;height:100%;border:0;border-radius:50%;touch-action:none;
-      background:transparent;box-shadow:0 18px 42px rgba(0,0,0,.30)
+      display:block;
+      width:100%;
+      height:100%;
+      border:0;
+      border-radius:50%;
+      touch-action:none;
+      background:transparent;
+      box-shadow:0 18px 42px rgba(0,0,0,.30);
+
+      overflow:hidden;
+      transform:translateZ(0);
+
+      -webkit-mask-image:-webkit-radial-gradient(white,black);
+      mask-image:radial-gradient(white,black);
+    }
+    .wheel-shell:after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      pointer-events:none;
+      box-shadow:inset 0 0 0 .5px rgba(255,255,255,.06);
     }
     .picker{
       position:absolute;width:26px;height:26px;border:4px solid #fff;border-radius:50%;
