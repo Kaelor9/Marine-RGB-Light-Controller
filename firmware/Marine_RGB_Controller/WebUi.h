@@ -21,7 +21,8 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       color-scheme:dark;
       --bg:#090b10;--panel:#121721;--line:rgba(255,255,255,.09);
       --text:#f5f7fa;--muted:#929cac;--soft:#667182;--ok:#53d47a;
-      --radius:24px;--small:16px
+      --radius:24px;--small:16px;
+      --app-height:100dvh
     }
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     html{
@@ -652,7 +653,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
       display:flex;
       flex-direction:column;
       width:min(100%,1120px);
-      height:100dvh;
+      height:var(--app-height);
       min-height:0;
       overflow:hidden
     }
@@ -994,6 +995,35 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+function syncAppHeight(){
+  const h=window.visualViewport
+    ? window.visualViewport.height
+    : window.innerHeight;
+
+  document.documentElement.style.setProperty(
+    "--app-height",
+    `${Math.round(h)}px`
+  );
+}
+
+syncAppHeight();
+
+window.addEventListener("resize",syncAppHeight);
+window.addEventListener("orientationchange",()=>{
+  setTimeout(syncAppHeight,100);
+});
+
+window.addEventListener("pageshow",()=>{
+  syncAppHeight();
+  requestAnimationFrame(syncAppHeight);
+  setTimeout(syncAppHeight,80);
+});
+
+if(window.visualViewport){
+  window.visualViewport.addEventListener("resize",syncAppHeight);
+}
+
 let state={r:255,g:128,b:40,power:true,brightness:70,effect:"static",speed:50,intensity:65};
 let lastStaticRgb={r:state.r,g:state.g,b:state.b};
 let dragging=false, effectTimer, settingsLoaded=false;
@@ -1022,7 +1052,15 @@ function updateInterfacePreferences(){
   document.documentElement.classList.toggle("light-scroll-locked",lock);
   document.body.classList.toggle("light-scroll-locked",lock);
 
-  if(lock)window.scrollTo(0,0);
+  if(lock){
+    syncAppHeight();
+    window.scrollTo(0,0);
+
+    requestAnimationFrame(()=>{
+      syncAppHeight();
+      window.scrollTo(0,0);
+    });
+  }
 }
 
 const actionHelp={
